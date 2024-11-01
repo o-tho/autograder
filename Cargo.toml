@@ -1,0 +1,11 @@
+[package]
+name = "autograder"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+imageproc = "0.25"
+image = "0.25"
+nalgebra = "0.33.2"
+serde = {version = "1.0.214", features= ["derive"]}
+serde_json = "1.0.132"
