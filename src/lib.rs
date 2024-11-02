@@ -58,6 +58,7 @@ pub fn generate_reports_for_pdf(
     pdf_path: String,
     template_path: String,
     exam_key_path: String,
+    out_prefix: String,
 ) -> Result<(), ErrorWrapper> {
     let t: Template = serde_json::from_reader(File::open(template_path)?)?;
     let k: ExamKey = serde_json::from_reader(File::open(exam_key_path)?)?;
@@ -118,7 +119,7 @@ pub fn generate_reports_for_pdf(
         .collect();
 
     for s in res {
-        s.save_to_file();
+        s.save_to_file(&out_prefix);
     }
     Ok(())
 }

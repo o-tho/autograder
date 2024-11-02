@@ -150,6 +150,7 @@ fn main() -> Result<(), std::boxed::Box<dyn std::error::Error>> {
         args[3].to_string(),
         args[1].to_string(),
         args[2].to_string(),
+        "out/".to_string(),
     );
     // Load the Template from the first argument
     Ok(())

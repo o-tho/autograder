@@ -9,7 +9,7 @@ pub struct ImageReport {
 }
 
 impl ImageReport {
-    pub fn save_to_file(&self) {
+    pub fn save_to_file(&self, prefix: &String) {
         let mut filename: String = "".to_string();
         if let Some(id) = self.sid {
             filename += &format!("{}-", id);
@@ -26,6 +26,6 @@ impl ImageReport {
         filename += &format!("score{}-{}.png", self.score, self.identifier);
 
         self.image
-            .save_with_format(filename, image::ImageFormat::Png);
+            .save_with_format(prefix.to_string() + &filename, image::ImageFormat::Png);
     }
 }
