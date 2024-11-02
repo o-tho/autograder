@@ -3,6 +3,9 @@ name = "autograder"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
 imageproc = "0.25"
 image = "0.25"
@@ -13,3 +16,4 @@ rayon = "1.10.0"
 pdf = "0.9.0"
 fax = "0.2.4"
 tiff = "0.9.1"
+wasm-bindgen = "0.2.95"

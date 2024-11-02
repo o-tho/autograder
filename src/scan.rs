@@ -1,4 +1,5 @@
 use crate::point::{affine_transformation, find_circle, Point, Transformation};
+use crate::report::ImageReport;
 use crate::template::{ExamKey, Template};
 use image::{DynamicImage, GrayImage, ImageReader, Luma, RgbImage};
 use imageproc::{self, drawing};
@@ -161,8 +162,14 @@ impl Scan {
         }
     }
 
-    pub fn score_report_as_image(&self, t: &Template, k: &ExamKey) -> RgbImage {
-        let mut result = gray_to_rgb(&self.img);
+    pub fn generate_imagereport(
+        &self,
+        t: &Template,
+        k: &ExamKey,
+        identifier: &String,
+    ) -> ImageReport {
+        let mut image = gray_to_rgb(&self.img);
+        let mut score = 0;
         let RED = image::Rgb([255u8, 0u8, 0u8]);
         let GREEN = image::Rgb([0u8, 255u8, 0u8]);
 
@@ -175,16 +182,20 @@ impl Scan {
         // draw the circle centers
         for c in t.circle_centers {
             let coord = trafo(c);
-            drawing::draw_cross_mut(&mut result, RED, coord.x as i32, coord.y as i32);
+            drawing::draw_cross_mut(&mut image, RED, coord.x as i32, coord.y as i32);
         }
 
         if let Some(v) = t.version.choice(&self) {
+            let thebox = t.version.boxes[v as usize];
+            draw_circle_around_box(&mut image, trafo(thebox.a), trafo(thebox.b), GREEN);
+
             for i in 0..t.questions.len() {
                 let q = &t.questions[i];
                 let correct = k[v as usize][i as usize] as usize;
                 let color = match q.choice(&self) {
                     Some(answer) => {
                         if answer as usize == correct {
+                            score += 1;
                             GREEN
                         } else {
                             RED
@@ -195,7 +206,7 @@ impl Scan {
                 let tl = trafo(q.boxes[correct].a);
                 let br = trafo(q.boxes[correct].b);
 
-                draw_circle_around_box(&mut result, tl, br, color);
+                draw_circle_around_box(&mut image, tl, br, color);
             }
         }
 
@@ -204,11 +215,17 @@ impl Scan {
             if let Some(idx) = q.choice(&self) {
                 let tl = trafo(q.boxes[idx as usize].a);
                 let br = trafo(q.boxes[idx as usize].b);
-                draw_circle_around_box(&mut result, tl, br, GREEN);
+                draw_circle_around_box(&mut image, tl, br, GREEN);
             }
         }
 
-        result
+        ImageReport {
+            image,
+            sid: self.id(&t),
+            version: t.version.choice(&self),
+            score,
+            identifier: identifier.to_string(),
+        }
     }
 
     pub fn blackness_around(&self, p: Point, r: u32) -> f64 {
