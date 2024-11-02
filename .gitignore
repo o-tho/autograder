@@ -2,6 +2,7 @@
 # will have compiled files and executables
 debug/
 target/
+output/
 
 # assets that cannot be shared
 private/
