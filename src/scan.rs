@@ -1,6 +1,7 @@
 use crate::point::{affine_transformation, find_circle, Point, Transformation};
 use crate::template::{ExamKey, Template};
-use image::{GrayImage, ImageReader, Luma};
+use image::{DynamicImage, GrayImage, ImageReader, Luma, RgbImage};
+use imageproc::{self, drawing};
 use std::cmp::{max, min};
 use std::path::Path;
 
@@ -75,16 +76,54 @@ fn is_dark(pixel: &Luma<u8>) -> bool {
     pixel[0] == 0
 }
 
+pub fn binary_image_from_image(img: DynamicImage) -> GrayImage {
+    let res = img.into_luma8();
+    let threshold = imageproc::contrast::otsu_level(&res);
+
+    imageproc::contrast::threshold(&res, threshold, imageproc::contrast::ThresholdType::Binary)
+}
+
 pub fn binary_image_from_file(path: &String) -> GrayImage {
     let image_path = Path::new(path);
     let img = ImageReader::open(&image_path)
         .expect("failed to open file")
         .decode()
-        .expect("failed to decode image")
-        .into_luma8();
-    let threshold = imageproc::contrast::otsu_level(&img);
+        .expect("failed to decode image");
 
-    imageproc::contrast::threshold(&img, threshold, imageproc::contrast::ThresholdType::Binary)
+    binary_image_from_image(img)
+}
+fn gray_to_rgb(gray_image: &GrayImage) -> RgbImage {
+    let (width, height) = gray_image.dimensions();
+    let mut rgb_image = RgbImage::new(width, height);
+
+    for (x, y, gray_pixel) in gray_image.enumerate_pixels() {
+        let intensity = gray_pixel[0];
+        rgb_image.put_pixel(x, y, image::Rgb([intensity, intensity, intensity]));
+    }
+
+    rgb_image
+}
+
+fn draw_circle_around_box(
+    img: &mut RgbImage,
+    topleft: Point,
+    botright: Point,
+    color: image::Rgb<u8>,
+) {
+    let radius = ((botright.x - topleft.x) / 3) as i32;
+    let center = Point {
+        x: (topleft.x + botright.x) / 2,
+        y: (topleft.y + botright.y) / 2,
+    };
+
+    for i in 0..(radius / 4) {
+        drawing::draw_hollow_circle_mut(
+            img,
+            (center.x as i32, center.y as i32),
+            radius + i as i32,
+            color,
+        );
+    }
 }
 
 impl Scan {
@@ -122,6 +161,56 @@ impl Scan {
         }
     }
 
+    pub fn score_report_as_image(&self, t: &Template, k: &ExamKey) -> RgbImage {
+        let mut result = gray_to_rgb(&self.img);
+        let RED = image::Rgb([255u8, 0u8, 0u8]);
+        let GREEN = image::Rgb([0u8, 255u8, 0u8]);
+
+        let trafo = match self.transformation {
+            Some(tr) => std::boxed::Box::new(move |p: Point| tr.apply(p))
+                as std::boxed::Box<dyn Fn(Point) -> Point>,
+            None => std::boxed::Box::new(|p: Point| p) as std::boxed::Box<dyn Fn(Point) -> Point>,
+        };
+
+        // draw the circle centers
+        for c in t.circle_centers {
+            let coord = trafo(c);
+            drawing::draw_cross_mut(&mut result, RED, coord.x as i32, coord.y as i32);
+        }
+
+        if let Some(v) = t.version.choice(&self) {
+            for i in 0..t.questions.len() {
+                let q = &t.questions[i];
+                let correct = k[v as usize][i as usize] as usize;
+                let color = match q.choice(&self) {
+                    Some(answer) => {
+                        if answer as usize == correct {
+                            GREEN
+                        } else {
+                            RED
+                        }
+                    }
+                    None => RED,
+                };
+                let tl = trafo(q.boxes[correct].a);
+                let br = trafo(q.boxes[correct].b);
+
+                draw_circle_around_box(&mut result, tl, br, color);
+            }
+        }
+
+        for i in 0..t.id_questions.len() {
+            let q = &t.id_questions[i];
+            if let Some(idx) = q.choice(&self) {
+                let tl = trafo(q.boxes[idx as usize].a);
+                let br = trafo(q.boxes[idx as usize].b);
+                draw_circle_around_box(&mut result, tl, br, GREEN);
+            }
+        }
+
+        result
+    }
+
     pub fn blackness_around(&self, p: Point, r: u32) -> f64 {
         self.blackness(
             Point {
@@ -141,16 +230,22 @@ impl Scan {
         let x_max = max(p1.x, p2.x);
         let y_min = min(p1.y, p2.y);
         let y_max = max(p1.y, p2.y);
+        let mut total = (x_max - x_min) * (y_max - y_min);
+        let (w, h) = self.img.dimensions();
         for x in x_min..x_max {
             for y in y_min..y_max {
-                let pixel = self.img.get_pixel(x, y);
-                if is_dark(pixel) {
-                    dark_pixels += 1;
+                if x < w && y < h {
+                    let pixel = self.img.get_pixel(x, y);
+                    if is_dark(pixel) {
+                        dark_pixels += 1;
+                    }
+                } else {
+                    total -= 1;
                 }
             }
         }
 
-        (dark_pixels as f64) / (((x_max - x_min) * (y_max - y_min)) as f64)
+        (dark_pixels as f64) / (total as f64)
     }
 
     pub fn find_transformation(&self, t: &Template) -> Option<Transformation> {

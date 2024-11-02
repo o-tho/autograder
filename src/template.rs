@@ -2,7 +2,7 @@ use crate::point::Point;
 use crate::scan::Scan;
 use serde::{Deserialize, Serialize};
 
-const THRESHOLD: f64 = 0.4;
+const THRESHOLD: f64 = 0.30;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Template {
@@ -29,6 +29,9 @@ pub struct Box {
 }
 impl Box {
     pub fn checked(self, scan: &Scan) -> bool {
+        self.blackness(&scan) > THRESHOLD
+    }
+    pub fn blackness(&self, scan: &Scan) -> f64 {
         let a: Point;
         let b: Point;
 
@@ -40,7 +43,7 @@ impl Box {
             b = self.b;
         }
 
-        scan.blackness(a, b) > THRESHOLD
+        scan.blackness(a, b)
     }
 }
 
