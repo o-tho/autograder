@@ -6,6 +6,9 @@ use imageproc::{self, drawing};
 use std::cmp::{max, min};
 use std::path::Path;
 
+const RED: image::Rgb<u8> = image::Rgb([255u8, 0u8, 0u8]);
+const GREEN: image::Rgb<u8> = image::Rgb([0u8, 255u8, 0u8]);
+
 #[derive(Debug, Clone)]
 pub struct Scan {
     pub img: GrayImage,
@@ -170,8 +173,6 @@ impl Scan {
     ) -> ImageReport {
         let mut image = gray_to_rgb(&self.img);
         let mut score = 0;
-        let RED = image::Rgb([255u8, 0u8, 0u8]);
-        let GREEN = image::Rgb([0u8, 255u8, 0u8]);
 
         let trafo = match self.transformation {
             Some(tr) => std::boxed::Box::new(move |p: Point| tr.apply(p))

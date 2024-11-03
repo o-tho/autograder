@@ -25,7 +25,8 @@ impl ImageReport {
 
         filename += &format!("score{}-{}.png", self.score, self.identifier);
 
-        self.image
+        let _ = self
+            .image
             .save_with_format(prefix.to_string() + &filename, image::ImageFormat::Png);
     }
 }

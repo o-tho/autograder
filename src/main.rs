@@ -1,5 +1,4 @@
 use autograder::generate_reports_for_pdf;
-use autograder::report::ImageReport;
 use autograder::scan::{binary_image_from_file, binary_image_from_image, Scan};
 use autograder::template::{ExamKey, Template};
 use image::{DynamicImage, GrayImage, RgbaImage};

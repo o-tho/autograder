@@ -71,38 +71,36 @@ pub fn generate_reports_for_pdf(
     for page_num in 0..file.num_pages() {
         let page = file.get_page(page_num)?;
 
-        if let images = page
+        let images = page
             .resources()?
             .xobjects
             .iter()
             .map(|(_name, &r)| resolver.get(r).unwrap())
-            .filter(|o| matches!(**o, XObject::Image(_)))
-        {
-            for (_i, o) in images.enumerate() {
-                let img = match *o {
-                    XObject::Image(ref im) => im,
-                    _ => continue,
-                };
-                let (mut image_data, filter) = img.raw_image_data(&resolver).unwrap();
-                let grayimage = match filter {
-                    Some(pdf::enc::StreamFilter::DCTDecode(_)) => binary_image_from_image(
-                        image::load_from_memory_with_format(&image_data, image::ImageFormat::Jpeg)
-                            .unwrap(),
-                    ),
+            .filter(|o| matches!(**o, XObject::Image(_)));
 
-                    Some(pdf::enc::StreamFilter::FlateDecode(_)) => binary_image_from_image(
-                        image::load_from_memory_with_format(&image_data, image::ImageFormat::Png)
-                            .unwrap(),
-                    ),
+        for (_i, o) in images.enumerate() {
+            let img = match *o {
+                XObject::Image(ref im) => im,
+                _ => continue,
+            };
+            let (image_data, filter) = img.raw_image_data(&resolver).unwrap();
+            let grayimage = match filter {
+                Some(pdf::enc::StreamFilter::DCTDecode(_)) => binary_image_from_image(
+                    image::load_from_memory_with_format(&image_data, image::ImageFormat::Jpeg)
+                        .unwrap(),
+                ),
 
-                    Some(pdf::enc::StreamFilter::CCITTFaxDecode(_)) => {
-                        image_helpers::fax_to_grayimage(&image_data, img.width, img.height)
-                    }
-                    _ => continue,
-                };
-                //grayimage.save_with_format("out.png", image::ImageFormat::Png);
-                scanned_docs.push((page_num + 1, grayimage));
-            }
+                Some(pdf::enc::StreamFilter::FlateDecode(_)) => binary_image_from_image(
+                    image::load_from_memory_with_format(&image_data, image::ImageFormat::Png)
+                        .unwrap(),
+                ),
+
+                Some(pdf::enc::StreamFilter::CCITTFaxDecode(_)) => {
+                    image_helpers::fax_to_grayimage(&image_data, img.width, img.height)
+                }
+                _ => continue,
+            };
+            scanned_docs.push((page_num + 1, grayimage));
         }
     }
 
