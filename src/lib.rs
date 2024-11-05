@@ -1,35 +1,35 @@
-mod image_helpers;
+pub mod image_container;
+pub mod image_helpers;
 pub mod point;
 pub mod report;
 pub mod scan;
 pub mod template;
 
+use crate::image_container::ImageContainer;
 use crate::report::ImageReport;
-use crate::scan::{binary_image_from_image, Scan};
-use image::GrayImage;
-use pdf::object::*;
+use crate::scan::Scan;
 use rayon::prelude::*;
 use template::{ExamKey, Template};
 use wasm_bindgen::prelude::*;
 
-use js_sys::{Promise, Uint8Array};
-use std::cell::RefCell;
-use std::rc::Rc;
-use wasm_bindgen_futures::JsFuture;
-use web_sys::{Event, File, FileList, FileReader, HtmlInputElement};
-
 // missing error types
-
 use pdf::error::PdfError;
 use serde_json::Error as SerdeError;
+use tiff::TiffError;
 
 #[derive(Debug)]
 pub enum ErrorWrapper {
+    TiffError(TiffError),
     PdfError(PdfError),
     JsonError(SerdeError),
     IoError(std::io::Error),
 }
 
+impl From<TiffError> for ErrorWrapper {
+    fn from(error: TiffError) -> Self {
+        ErrorWrapper::TiffError(error)
+    }
+}
 impl From<PdfError> for ErrorWrapper {
     fn from(error: PdfError) -> Self {
         ErrorWrapper::PdfError(error)
@@ -54,70 +54,29 @@ impl From<ErrorWrapper> for JsValue {
         match error {
             ErrorWrapper::PdfError(e) => JsValue::from_str(&format!("PDF Error: {:?}", e)),
             ErrorWrapper::JsonError(e) => JsValue::from_str(&format!("JSON Error: {:?}", e)),
+            ErrorWrapper::TiffError(e) => JsValue::from_str(&format!("Tiff Error: {:?}", e)),
             ErrorWrapper::IoError(e) => JsValue::from_str(&format!("I/O Error: {:?}", e)),
         }
     }
 }
-
-pub fn generate_reports_for_pdf(
-    pdf_path: String,
-    template_path: String,
-    exam_key_path: String,
+pub fn generate_reports_for_image_container(
+    container: &mut dyn ImageContainer,
+    template: &Template,
+    key: &ExamKey,
     out_prefix: String,
 ) -> Result<(), ErrorWrapper> {
-    let t: Template = serde_json::from_reader(std::fs::File::open(template_path)?)?;
-    let k: ExamKey = serde_json::from_reader(std::fs::File::open(exam_key_path)?)?;
-
-    let file = pdf::file::FileOptions::cached().open(pdf_path).unwrap();
-    let resolver = file.resolver();
-
-    let mut scanned_docs: Vec<(u32, GrayImage)> = vec![];
-
-    for page_num in 0..file.num_pages() {
-        let page = file.get_page(page_num)?;
-
-        let images = page
-            .resources()?
-            .xobjects
-            .iter()
-            .map(|(_name, &r)| resolver.get(r).unwrap())
-            .filter(|o| matches!(**o, XObject::Image(_)));
-
-        for (_i, o) in images.enumerate() {
-            let img = match *o {
-                XObject::Image(ref im) => im,
-                _ => continue,
-            };
-            let (image_data, filter) = img.raw_image_data(&resolver).unwrap();
-            let grayimage = match filter {
-                Some(pdf::enc::StreamFilter::DCTDecode(_)) => binary_image_from_image(
-                    image::load_from_memory_with_format(&image_data, image::ImageFormat::Jpeg)
-                        .unwrap(),
-                ),
-
-                Some(pdf::enc::StreamFilter::FlateDecode(_)) => binary_image_from_image(
-                    image::load_from_memory_with_format(&image_data, image::ImageFormat::Png)
-                        .unwrap(),
-                ),
-
-                Some(pdf::enc::StreamFilter::CCITTFaxDecode(_)) => {
-                    image_helpers::fax_to_grayimage(&image_data, img.width, img.height)
-                }
-                _ => continue,
-            };
-            scanned_docs.push((page_num + 1, grayimage));
-        }
-    }
+    let scanned_docs = container.to_vector()?;
 
     let res: Vec<ImageReport> = scanned_docs
         .par_iter()
+        .enumerate()
         .map(|i| {
             let mut scan = Scan {
                 img: i.1.clone(),
                 transformation: None,
             };
-            scan.transformation = scan.find_transformation(&t);
-            scan.generate_imagereport(&t, &k, &format!("page{}", i.0))
+            scan.transformation = scan.find_transformation(&template);
+            scan.generate_imagereport(&template, &key, &format!("page{}", i.0))
         })
         .collect();
 

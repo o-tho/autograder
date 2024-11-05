@@ -1,10 +1,10 @@
+use crate::image_helpers::{draw_circle_around_box, gray_to_rgb};
 use crate::point::{affine_transformation, find_circle, Point, Transformation};
 use crate::report::ImageReport;
 use crate::template::{ExamKey, Template};
-use image::{DynamicImage, GrayImage, ImageReader, Luma, RgbImage};
+use image::{GrayImage, Luma};
 use imageproc::{self, drawing};
 use std::cmp::{max, min};
-use std::path::Path;
 
 const RED: image::Rgb<u8> = image::Rgb([255u8, 0u8, 0u8]);
 const GREEN: image::Rgb<u8> = image::Rgb([0u8, 255u8, 0u8]);
@@ -79,57 +79,6 @@ fn find_inner_boundary_points(
 fn is_dark(pixel: &Luma<u8>) -> bool {
     pixel[0] == 0
 }
-
-pub fn binary_image_from_image(img: DynamicImage) -> GrayImage {
-    let res = img.into_luma8();
-    let threshold = imageproc::contrast::otsu_level(&res);
-
-    imageproc::contrast::threshold(&res, threshold, imageproc::contrast::ThresholdType::Binary)
-}
-
-pub fn binary_image_from_file(path: &String) -> GrayImage {
-    let image_path = Path::new(path);
-    let img = ImageReader::open(&image_path)
-        .expect("failed to open file")
-        .decode()
-        .expect("failed to decode image");
-
-    binary_image_from_image(img)
-}
-fn gray_to_rgb(gray_image: &GrayImage) -> RgbImage {
-    let (width, height) = gray_image.dimensions();
-    let mut rgb_image = RgbImage::new(width, height);
-
-    for (x, y, gray_pixel) in gray_image.enumerate_pixels() {
-        let intensity = gray_pixel[0];
-        rgb_image.put_pixel(x, y, image::Rgb([intensity, intensity, intensity]));
-    }
-
-    rgb_image
-}
-
-fn draw_circle_around_box(
-    img: &mut RgbImage,
-    topleft: Point,
-    botright: Point,
-    color: image::Rgb<u8>,
-) {
-    let radius = ((botright.x - topleft.x) / 3) as i32;
-    let center = Point {
-        x: (topleft.x + botright.x) / 2,
-        y: (topleft.y + botright.y) / 2,
-    };
-
-    for i in 0..(radius / 4) {
-        drawing::draw_hollow_circle_mut(
-            img,
-            (center.x as i32, center.y as i32),
-            radius + i as i32,
-            color,
-        );
-    }
-}
-
 impl Scan {
     pub fn id(&self, t: &Template) -> Option<u32> {
         let choices: Vec<Option<u32>> = t.id_questions.iter().map(|q| q.choice(&self)).collect();

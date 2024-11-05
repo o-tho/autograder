@@ -20,6 +20,8 @@ wasm-bindgen = "0.2.95"
 csv = "1.3.0"
 js-sys = "0.3.72"
 wasm-bindgen-futures = "0.4.45"
+zune-jpeg = "0.4.13"
+clap = {version = "4.5.20", features = ["derive"]}
 
 [dependencies.web-sys]
 version = "0.3.72"

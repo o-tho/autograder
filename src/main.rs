@@ -1,7 +1,11 @@
-use autograder::generate_reports_for_pdf;
-use autograder::scan::{binary_image_from_file, binary_image_from_image, Scan};
+use autograder::generate_reports_for_image_container;
+use autograder::image_container::{PdfContainer, TiffContainer};
+use autograder::image_helpers::binary_image_from_file;
+use autograder::scan::Scan;
 use autograder::template::{ExamKey, Template};
-use image::{DynamicImage, GrayImage, RgbaImage};
+use autograder::ErrorWrapper;
+use clap::{Arg, Command};
+use image::GrayImage;
 use rayon::prelude::*;
 use std::env;
 use std::fs::File;
@@ -134,23 +138,73 @@ fn actual() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-fn main() -> Result<(), std::boxed::Box<dyn std::error::Error>> {
-    // Collect command-line arguments
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 3 {
-        eprintln!(
-            "Usage: {} <template.json> <examkey.json> <scans.pdf>",
-            args[0]
-        );
-        std::process::exit(1);
-    }
+fn main() -> Result<(), ErrorWrapper> {
+    let matches = Command::new("autograder")
+        .about("automatically grade MCQ exams using optical mark recognition")
+        .subcommand(
+            Command::new("report")
+                .about("Generate a report")
+                .arg(
+                    Arg::new("outpath")
+                        .long("outpath")
+                        .value_name("OUT")
+                        .default_value("./")
+                        .help("Specify the output path"),
+                )
+                .arg(
+                    Arg::new("files")
+                        .required(true)
+                        .num_args(3)
+                        .help("Specify the list of files (template.json key.json images.pdf)"),
+                ),
+        )
+        .subcommand(
+            Command::new("debug").about("Run in debug mode").arg(
+                Arg::new("config")
+                    .long("config")
+                    .value_name("CONFIG")
+                    .help("Specify the debug configuration file"),
+            ),
+        )
+        .get_matches();
 
-    let _ = generate_reports_for_pdf(
-        args[3].to_string(),
-        args[1].to_string(),
-        args[2].to_string(),
-        "out/".to_string(),
-    );
+    match matches.subcommand() {
+        Some(("report", sub_matches)) => {
+            let outpath = sub_matches
+                .get_one::<String>("outpath")
+                .unwrap()
+                .to_string();
+            let files: Vec<_> = sub_matches.get_many::<String>("files").unwrap().collect();
+
+            let t: Template = serde_json::from_reader(std::fs::File::open(files[0])?)?;
+            let k: ExamKey = serde_json::from_reader(std::fs::File::open(files[1])?)?;
+
+            let imagefile = Path::new(&files[2]);
+
+            match imagefile.extension().and_then(|ext| ext.to_str()) {
+                Some("pdf") => {
+                    let file = pdf::file::FileOptions::uncached().open(imagefile).unwrap();
+                    let mut container = PdfContainer { pdf_file: file };
+
+                    generate_reports_for_image_container(&mut container, &t, &k, outpath)?
+                }
+                Some("tif") | Some("tiff") => {
+                    let buffer = std::io::BufReader::new(std::fs::File::open(imagefile)?);
+
+                    let tiff = tiff::decoder::Decoder::new(buffer)?;
+
+                    let mut container = TiffContainer { decoder: tiff };
+
+                    generate_reports_for_image_container(&mut container, &t, &k, outpath)?
+                }
+                _ => println!("Unsupported file type: {:?}", imagefile),
+            }
+        }
+        Some(("debug", _sub_matches)) => {
+            println!("Not implemented");
+        }
+        _ => println!("Please specify a valid subcommand (e.g., `report` or `debug`)."),
+    }
     // Load the Template from the first argument
     Ok(())
 }
