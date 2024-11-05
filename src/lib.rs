@@ -23,8 +23,14 @@ pub enum ErrorWrapper {
     PdfError(PdfError),
     JsonError(SerdeError),
     IoError(std::io::Error),
+    ImageError(image::ImageError),
 }
 
+impl From<image::ImageError> for ErrorWrapper {
+    fn from(error: image::ImageError) -> Self {
+        ErrorWrapper::ImageError(error)
+    }
+}
 impl From<TiffError> for ErrorWrapper {
     fn from(error: TiffError) -> Self {
         ErrorWrapper::TiffError(error)
@@ -56,6 +62,7 @@ impl From<ErrorWrapper> for JsValue {
             ErrorWrapper::JsonError(e) => JsValue::from_str(&format!("JSON Error: {:?}", e)),
             ErrorWrapper::TiffError(e) => JsValue::from_str(&format!("Tiff Error: {:?}", e)),
             ErrorWrapper::IoError(e) => JsValue::from_str(&format!("I/O Error: {:?}", e)),
+            ErrorWrapper::ImageError(e) => JsValue::from_str(&format!("Image Error: {:?}", e)),
         }
     }
 }

@@ -1,6 +1,6 @@
 use crate::image_helpers::{binary_image_from_image, fax_to_grayimage};
 use crate::ErrorWrapper;
-use image::GrayImage;
+use image::{DynamicImage, GrayImage};
 
 use pdf::file::NoCache;
 use pdf::file::NoLog;
@@ -16,8 +16,18 @@ pub struct TiffContainer<R: std::io::BufRead + std::io::Seek> {
     pub decoder: tiff::decoder::Decoder<R>,
 }
 
+pub struct SingleImageContainer {
+    pub image: DynamicImage,
+}
+
 pub trait ImageContainer {
     fn to_vector(&mut self) -> Result<Vec<GrayImage>, ErrorWrapper>;
+}
+
+impl ImageContainer for SingleImageContainer {
+    fn to_vector(&mut self) -> Result<Vec<GrayImage>, ErrorWrapper> {
+        Ok(vec![binary_image_from_image(self.image.clone())])
+    }
 }
 
 impl<R: std::io::BufRead + std::io::Seek> ImageContainer for TiffContainer<R> {

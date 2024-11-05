@@ -1,5 +1,5 @@
 use autograder::generate_reports_for_image_container;
-use autograder::image_container::{PdfContainer, TiffContainer};
+use autograder::image_container::{PdfContainer, SingleImageContainer, TiffContainer};
 use autograder::image_helpers::binary_image_from_file;
 use autograder::scan::Scan;
 use autograder::template::{ExamKey, Template};
@@ -209,6 +209,13 @@ fn main() -> Result<(), ErrorWrapper> {
                     let tiff = tiff::decoder::Decoder::new(buffer)?;
 
                     let mut container = TiffContainer { decoder: tiff };
+
+                    generate_reports_for_image_container(&mut container, &t, &k, outpath)?
+                }
+                Some("jpg") | Some("jpeg") | Some("png") => {
+                    let image = image::open(imagefile)?;
+
+                    let mut container = SingleImageContainer { image };
 
                     generate_reports_for_image_container(&mut container, &t, &k, outpath)?
                 }
