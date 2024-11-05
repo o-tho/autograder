@@ -9,9 +9,14 @@ use crate::scan::{binary_image_from_image, Scan};
 use image::GrayImage;
 use pdf::object::*;
 use rayon::prelude::*;
-use std::fs::File;
 use template::{ExamKey, Template};
 use wasm_bindgen::prelude::*;
+
+use js_sys::{Promise, Uint8Array};
+use std::cell::RefCell;
+use std::rc::Rc;
+use wasm_bindgen_futures::JsFuture;
+use web_sys::{Event, File, FileList, FileReader, HtmlInputElement};
 
 // missing error types
 
@@ -53,15 +58,15 @@ impl From<ErrorWrapper> for JsValue {
         }
     }
 }
-#[wasm_bindgen]
+
 pub fn generate_reports_for_pdf(
     pdf_path: String,
     template_path: String,
     exam_key_path: String,
     out_prefix: String,
 ) -> Result<(), ErrorWrapper> {
-    let t: Template = serde_json::from_reader(File::open(template_path)?)?;
-    let k: ExamKey = serde_json::from_reader(File::open(exam_key_path)?)?;
+    let t: Template = serde_json::from_reader(std::fs::File::open(template_path)?)?;
+    let k: ExamKey = serde_json::from_reader(std::fs::File::open(exam_key_path)?)?;
 
     let file = pdf::file::FileOptions::cached().open(pdf_path).unwrap();
     let resolver = file.resolver();
