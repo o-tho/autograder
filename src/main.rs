@@ -152,10 +152,19 @@ fn main() -> Result<(), ErrorWrapper> {
                         .help("Specify the output path"),
                 )
                 .arg(
-                    Arg::new("files")
-                        .required(true)
-                        .num_args(3)
-                        .help("Specify the list of files (template.json key.json images.pdf)"),
+                    Arg::new("template")
+                        .default_value("tests/assets/template.json")
+                        .help("template configuration"),
+                )
+                .arg(
+                    Arg::new("key")
+                        .default_value("tests/assets/key.json")
+                        .help("exam key"),
+                )
+                .arg(
+                    Arg::new("images")
+                        .default_value("tests/assets/scanner-multipagetiff.tif")
+                        .help("image container in PDF or multipage TIFF format"),
                 ),
         )
         .subcommand(
@@ -174,12 +183,18 @@ fn main() -> Result<(), ErrorWrapper> {
                 .get_one::<String>("outpath")
                 .unwrap()
                 .to_string();
-            let files: Vec<_> = sub_matches.get_many::<String>("files").unwrap().collect();
+            let templatepath = sub_matches
+                .get_one::<String>("template")
+                .unwrap()
+                .to_string();
 
-            let t: Template = serde_json::from_reader(std::fs::File::open(files[0])?)?;
-            let k: ExamKey = serde_json::from_reader(std::fs::File::open(files[1])?)?;
+            let keypath = sub_matches.get_one::<String>("key").unwrap().to_string();
+            let imagespath = sub_matches.get_one::<String>("images").unwrap().to_string();
 
-            let imagefile = Path::new(&files[2]);
+            let t: Template = serde_json::from_reader(std::fs::File::open(templatepath)?)?;
+            let k: ExamKey = serde_json::from_reader(std::fs::File::open(keypath)?)?;
+
+            let imagefile = Path::new(&imagespath);
 
             match imagefile.extension().and_then(|ext| ext.to_str()) {
                 Some("pdf") => {
