@@ -1,3 +1,4 @@
+pub mod app;
 pub mod image_container;
 pub mod image_helpers;
 pub mod point;
