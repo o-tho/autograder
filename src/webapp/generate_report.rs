@@ -209,6 +209,7 @@ impl eframe::App for GenerateReport {
                             log::error!("Could not infer file type");
                         }
                     }
+                    _ => {}
                 }
             }
         });

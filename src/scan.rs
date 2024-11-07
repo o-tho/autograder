@@ -114,6 +114,33 @@ impl Scan {
         }
     }
 
+    pub fn circle_everything(&self, t: &Template) -> image::RgbImage {
+        let mut image = gray_to_rgb(&self.img);
+
+        let trafo = match self.transformation {
+            Some(tr) => std::boxed::Box::new(move |p: Point| tr.apply(p))
+                as std::boxed::Box<dyn Fn(Point) -> Point>,
+            None => std::boxed::Box::new(|p: Point| p) as std::boxed::Box<dyn Fn(Point) -> Point>,
+        };
+
+        for c in t.circle_centers {
+            let coord = trafo(c);
+            drawing::draw_cross_mut(&mut image, RED, coord.x as i32, coord.y as i32);
+        }
+
+        let mut all_questions = t.questions.clone();
+        all_questions.push(t.version.clone());
+        all_questions.extend(t.id_questions.clone());
+
+        for q in all_questions {
+            for b in q.boxes {
+                draw_circle_around_box(&mut image, b.a, b.b, GREEN);
+            }
+        }
+
+        image
+    }
+
     pub fn generate_imagereport(
         &self,
         t: &Template,
