@@ -1,4 +1,3 @@
-use autograder::app::TemplateApp;
 use autograder::generate_reports_for_image_container;
 use autograder::image_container::{PdfContainer, SingleImageContainer, TiffContainer};
 use autograder::image_helpers::binary_image_from_file;
@@ -230,14 +229,13 @@ fn main() -> Result<(), ErrorWrapper> {
         }
         _ => println!("Please specify a valid subcommand (e.g., `report` or `debug`)."),
     }
-    // Load the Template from the first argument
     Ok(())
 }
 
 #[cfg(target_arch = "wasm32")]
 fn main() {
-    use eframe::wasm_bindgen::JsCast as _;
-
+    use autograder::webapp::WebApp;
+    use eframe::wasm_bindgen::JsCast;
     // Redirect `log` message to `console.log` and friends:
     eframe::WebLogger::init(log::LevelFilter::Debug).ok();
 
@@ -254,15 +252,13 @@ fn main() {
             .expect("Failed to find the_canvas_id")
             .dyn_into::<web_sys::HtmlCanvasElement>()
             .expect("the_canvas_id was not a HtmlCanvasElement");
-
         let start_result = eframe::WebRunner::new()
             .start(
                 canvas,
                 web_options,
-                Box::new(|cc| Ok(Box::new(autograder::app::TemplateApp::new(cc)))),
+                Box::new(|cc| Ok(Box::new(WebApp::default()))),
             )
             .await;
-
         // Remove the loading text and spinner:
         if let Some(loading_text) = document.get_element_by_id("loading_text") {
             match start_result {

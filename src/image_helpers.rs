@@ -72,3 +72,17 @@ pub fn draw_circle_around_box(
         );
     }
 }
+
+#[cfg(target_arch = "wasm32")]
+pub fn rgb_to_egui_color_image(image: &RgbImage) -> egui::ColorImage {
+    let (width, height) = image.dimensions();
+    let pixels: Vec<egui::Color32> = image
+        .pixels()
+        .map(|p| egui::Color32::from_rgb(p[0], p[1], p[2]))
+        .collect();
+
+    egui::ColorImage {
+        size: [width as usize, height as usize],
+        pixels,
+    }
+}

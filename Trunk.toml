@@ -1,0 +1,2 @@
+[serve]
+cache-control = "no-store, no-cache, must-revalidate"

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 const THRESHOLD: f64 = 0.30;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Template {
     pub id_questions: Vec<Question>,
     pub version: Question,
@@ -15,7 +15,7 @@ pub struct Template {
     pub width: u32,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Question {
     pub id: String,
     pub boxes: Vec<Box>,

@@ -1,10 +1,10 @@
-pub mod app;
 pub mod image_container;
 pub mod image_helpers;
 pub mod point;
 pub mod report;
 pub mod scan;
 pub mod template;
+pub mod webapp;
 
 use crate::image_container::ImageContainer;
 use crate::report::ImageReport;
