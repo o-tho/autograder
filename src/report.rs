@@ -42,7 +42,7 @@ impl ImageReport {
 }
 
 pub fn create_zip_from_imagereports(
-    reports: &Vec<ImageReport>,
+    reports: &[ImageReport],
 ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     // Create a buffer to hold the zip file in memory
     let mut zip_buffer = Cursor::new(Vec::new());
@@ -50,7 +50,7 @@ pub fn create_zip_from_imagereports(
     let mut wrt = csv::Writer::from_writer(std::io::Cursor::new(Vec::new()));
 
     wrt.write_record(["Filename", "ID", "Score"])?;
-    for (_index, report) in reports.iter().enumerate() {
+    for report in reports.iter() {
         // Encode each image as PNG into a separate buffer
         let mut image_buffer = Vec::new();
         report.write_to_buffer(&mut image_buffer);

@@ -9,14 +9,12 @@ pub fn fax_to_grayimage(data: &[u8], width: u32, height: u32) -> GrayImage {
     let mut result = GrayImage::new(width, height);
     let mut y = 0;
     decoder::decode_g4(data.iter().cloned(), width as u16, None, |transitions| {
-        let mut x = 0;
-        for c in decoder::pels(transitions, width as u16) {
+        for (x, c) in decoder::pels(transitions, width as u16).enumerate() {
             let pixel = match c {
                 Color::Black => Luma([0u8]),
                 Color::White => Luma([255u8]),
             };
-            result.put_pixel(x, y, pixel);
-            x += 1;
+            result.put_pixel(x as u32, y, pixel);
         }
         y += 1;
     });
@@ -64,12 +62,7 @@ pub fn draw_circle_around_box(
     };
 
     for i in 0..(radius / 4) {
-        drawing::draw_hollow_circle_mut(
-            img,
-            (center.x as i32, center.y as i32),
-            radius + i,
-            color,
-        );
+        drawing::draw_hollow_circle_mut(img, (center.x as i32, center.y as i32), radius + i, color);
     }
 }
 

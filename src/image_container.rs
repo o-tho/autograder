@@ -77,7 +77,7 @@ impl ImageContainer for PdfContainer {
                 .map(|(_name, &r)| resolver.get(r).unwrap())
                 .filter(|o| matches!(**o, XObject::Image(_)));
 
-            for (_i, o) in images.enumerate() {
+            for o in images {
                 let img = match *o {
                     XObject::Image(ref im) => im,
                     _ => continue,
