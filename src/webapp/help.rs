@@ -14,13 +14,18 @@ impl Default for Help {
 }
 
 fn prepare_markdown_content(content: &str) -> String {
-    let origin = web_sys::window()
+    let location = web_sys::window()
         .expect("no global `window` exists")
-        .location()
-        .origin()
-        .expect("failed to get location origin");
+        .location();
 
-    let modified = content.replace("](assets/", &format!("]({}/assets/", origin));
+    let full_path = format!(
+        "{}{}",
+        location.origin().expect("failed to get location origin"),
+        location
+            .pathname()
+            .expect("failed to get location pathname")
+    );
+    let modified = content.replace("](assets/", &format!("]({}/assets/", full_path));
     modified
 }
 
