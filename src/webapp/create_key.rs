@@ -1,6 +1,6 @@
 use crate::template::ExamKey;
 use crate::webapp::utils::download_button;
-use eframe::egui::{self, Context, Slider, TextEdit, Ui};
+use eframe::egui::{Context, Slider, TextEdit};
 use eframe::Frame;
 
 pub struct CreateKey {
@@ -34,7 +34,7 @@ fn convert_to_vector(input: &str) -> Vec<u32> {
 }
 
 impl CreateKey {
-    pub fn update(&mut self, ctx: &Context, frame: &mut Frame) {
+    pub fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
         eframe::egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Create Key");
 

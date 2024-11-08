@@ -3,7 +3,7 @@ use crate::point::Point;
 use crate::scan::Scan;
 use crate::template::Template;
 use crate::webapp::utils::{download_button, template_from_settings, upload_button, FileType};
-use eframe::egui::{Align, CentralPanel, Context, ScrollArea, SidePanel, TextEdit, Ui};
+use eframe::egui::{CentralPanel, Context, ScrollArea, SidePanel, TextEdit, Ui};
 use eframe::Frame;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
@@ -38,7 +38,7 @@ fn text_box_with_label(ui: &mut Ui, label: &str, value: &mut u32) {
         let mut text = value.to_string(); // Convert `u32` to `String`
 
         // Create the text edit field
-        let response = ui.add(TextEdit::singleline(&mut text).desired_width(40.0));
+        ui.add(TextEdit::singleline(&mut text).desired_width(40.0));
 
         // Update the `u32` value if the text can be parsed successfully
         if let Ok(parsed_value) = text.parse() {
@@ -53,14 +53,14 @@ fn text_box_pair_with_label(ui: &mut Ui, label: &str, x_value: &mut u32, y_value
 
         // Text box for the `x` value
         let mut x_text = x_value.to_string();
-        let x_response = ui.add(TextEdit::singleline(&mut x_text).desired_width(40.0));
+        ui.add(TextEdit::singleline(&mut x_text).desired_width(40.0));
         if let Ok(parsed_x) = x_text.parse() {
             *x_value = parsed_x;
         }
 
         // Text box for the `y` value
         let mut y_text = y_value.to_string();
-        let y_response = ui.add(TextEdit::singleline(&mut y_text).desired_width(40.0));
+        ui.add(TextEdit::singleline(&mut y_text).desired_width(40.0));
         if let Ok(parsed_y) = y_text.parse() {
             *y_value = parsed_y;
         }
@@ -195,7 +195,6 @@ impl CreateTemplate {
                                 .button("🎯 Find precise circle center & radius")
                                 .clicked()
                             {
-                                let template = self.to_template();
                                 let scan = Scan {
                                     img: binary_image_from_image(
                                         self.original_image.clone().unwrap(),

@@ -5,7 +5,6 @@ use crate::template::Template;
 use crate::webapp::create_template::{
     CircleSettings, LayoutSettings, PositionSettings, QuestionSettings,
 };
-use eframe::egui::{Context, Ui};
 use std::future::Future;
 use tokio::sync::mpsc::Sender;
 

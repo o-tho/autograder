@@ -59,7 +59,6 @@ impl eframe::App for WebApp {
             ViewType::CreateTemplate => self.create_template.update(ctx, frame),
             ViewType::CreateKey => self.create_key.update(ctx, frame),
             ViewType::Help => self.help.update(ctx, frame),
-            _ => {}
         }
     }
 }

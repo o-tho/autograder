@@ -3,15 +3,12 @@ use crate::image_helpers::rgb_to_egui_color_image;
 use crate::report::{create_zip_from_imagereports, ImageReport};
 use crate::scan::Scan;
 use crate::template::{ExamKey, Template};
-use crate::webapp::utils::{download_button, execute, upload_button, FileType};
-use crate::ErrorWrapper;
+use crate::webapp::utils::{download_button, upload_button, FileType};
 use egui::Context;
-use serde_json;
-use std::future::Future;
-use std::sync::Arc;
-//use std::sync::mpsc::{channel, Receiver, Sender};
 use infer;
 use rayon::prelude::*;
+use serde_json;
+use std::sync::Arc;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 pub struct GenerateReport {
@@ -181,14 +178,14 @@ impl eframe::App for GenerateReport {
                                 "application/pdf" => {
                                     let pdf =
                                         pdf::file::FileOptions::uncached().load(data).unwrap();
-                                    let mut container = PdfContainer { pdf_file: pdf };
+                                    let container = PdfContainer { pdf_file: pdf };
 
                                     self.container = Some(Arc::new(container));
                                 }
                                 "image/tiff" => {
                                     let buffer = std::io::Cursor::new(data);
                                     let tiff = tiff::decoder::Decoder::new(buffer).unwrap();
-                                    let mut container = TiffContainer { decoder: tiff };
+                                    let container = TiffContainer { decoder: tiff };
                                     self.container = Some(Arc::new(container));
                                 }
                                 "image/jpeg" => {
@@ -197,7 +194,7 @@ impl eframe::App for GenerateReport {
                                         image::ImageFormat::Jpeg,
                                     )
                                     .unwrap();
-                                    let mut container = SingleImageContainer { image: image };
+                                    let container = SingleImageContainer { image: image };
                                     self.container = Some(Arc::new(container));
                                 }
                                 _ => log::error!(

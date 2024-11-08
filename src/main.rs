@@ -1,11 +1,12 @@
-use autograder::generate_reports_for_image_container;
-use autograder::image_container::{PdfContainer, SingleImageContainer, TiffContainer};
-use autograder::template::{ExamKey, Template};
+#[cfg(not(target_arch = "wasm32"))]
 use autograder::ErrorWrapper;
-use clap::{Arg, Command};
-use std::path::Path;
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> Result<(), ErrorWrapper> {
+    use autograder::generate_reports_for_image_container;
+    use autograder::image_container::{PdfContainer, SingleImageContainer, TiffContainer};
+    use autograder::template::{ExamKey, Template};
+    use clap::{Arg, Command};
+    use std::path::Path;
     let matches = Command::new("autograder")
         .about("automatically grade MCQ exams using optical mark recognition")
         .subcommand(
@@ -121,7 +122,7 @@ fn main() {
             .start(
                 canvas,
                 web_options,
-                Box::new(|cc| Ok(Box::new(WebApp::default()))),
+                Box::new(|_cc| Ok(Box::new(WebApp::default()))),
             )
             .await;
         // Remove the loading text and spinner:

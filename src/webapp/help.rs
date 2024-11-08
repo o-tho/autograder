@@ -1,10 +1,6 @@
-use eframe::egui::{self, Context, ScrollArea};
+use eframe::egui::{Context, ScrollArea};
 use eframe::Frame;
 use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
-use ehttp::Request;
-use poll_promise::Promise;
-use regex::Regex;
-use wasm_bindgen::prelude::*;
 
 const README_CONTENT: &str = include_str!("../../README.md");
 
