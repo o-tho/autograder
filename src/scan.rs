@@ -403,6 +403,7 @@ impl Scan {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::image_helpers::binary_image_from_file;
 
     #[test]
     fn image_circle_center_easy() {

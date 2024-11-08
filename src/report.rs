@@ -50,7 +50,7 @@ pub fn create_zip_from_imagereports(
     let mut wrt = csv::Writer::from_writer(std::io::Cursor::new(Vec::new()));
 
     wrt.write_record(&["Filename", "ID", "Score"])?;
-    for (index, report) in reports.iter().enumerate() {
+    for (_index, report) in reports.iter().enumerate() {
         // Encode each image as PNG into a separate buffer
         let mut image_buffer = Vec::new();
         report.write_to_buffer(&mut image_buffer);
