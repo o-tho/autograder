@@ -29,7 +29,7 @@ pub struct Box {
 }
 impl Box {
     pub fn checked(self, scan: &Scan) -> bool {
-        self.blackness(&scan) > THRESHOLD
+        self.blackness(scan) > THRESHOLD
     }
     pub fn blackness(&self, scan: &Scan) -> f64 {
         let a: Point;

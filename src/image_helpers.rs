@@ -32,7 +32,7 @@ pub fn binary_image_from_image(img: DynamicImage) -> GrayImage {
 
 pub fn binary_image_from_file(path: &String) -> GrayImage {
     let image_path = Path::new(path);
-    let img = ImageReader::open(&image_path)
+    let img = ImageReader::open(image_path)
         .expect("failed to open file")
         .decode()
         .expect("failed to decode image");
@@ -67,7 +67,7 @@ pub fn draw_circle_around_box(
         drawing::draw_hollow_circle_mut(
             img,
             (center.x as i32, center.y as i32),
-            radius + i as i32,
+            radius + i,
             color,
         );
     }

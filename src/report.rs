@@ -17,13 +17,13 @@ impl ImageReport {
         if let Some(id) = self.sid {
             filename += &format!("{}-", id);
         } else {
-            filename += &format!("NOID-");
+            filename += "NOID-";
         }
 
         if let Some(version) = self.version {
             filename += &format!("v{}-", version);
         } else {
-            filename += &format!("NOVERSION-");
+            filename += "NOVERSION-";
         }
 
         filename += &format!("score{}-{}.png", self.score, self.identifier);
@@ -31,7 +31,7 @@ impl ImageReport {
         prefix.to_string() + &filename
     }
     pub fn save_to_file(&self, prefix: &String) {
-        let path = self.save_filename(&prefix);
+        let path = self.save_filename(prefix);
         let _ = self.image.save_with_format(&path, image::ImageFormat::Png);
     }
     pub fn write_to_buffer(&self, buffer: &mut Vec<u8>) {
@@ -49,7 +49,7 @@ pub fn create_zip_from_imagereports(
     let mut zip_writer = ZipWriter::new(&mut zip_buffer);
     let mut wrt = csv::Writer::from_writer(std::io::Cursor::new(Vec::new()));
 
-    wrt.write_record(&["Filename", "ID", "Score"])?;
+    wrt.write_record(["Filename", "ID", "Score"])?;
     for (_index, report) in reports.iter().enumerate() {
         // Encode each image as PNG into a separate buffer
         let mut image_buffer = Vec::new();

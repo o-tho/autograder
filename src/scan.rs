@@ -81,7 +81,7 @@ fn is_dark(pixel: &Luma<u8>) -> bool {
 }
 impl Scan {
     pub fn id(&self, t: &Template) -> Option<u32> {
-        let choices: Vec<Option<u32>> = t.id_questions.iter().map(|q| q.choice(&self)).collect();
+        let choices: Vec<Option<u32>> = t.id_questions.iter().map(|q| q.choice(self)).collect();
 
         let id: String = choices
             .iter()
@@ -99,11 +99,11 @@ impl Scan {
     pub fn score(&self, t: &Template, k: &ExamKey) -> Option<u32> {
         let mut score = 0;
 
-        if let Some(v) = t.version.choice(&self) {
+        if let Some(v) = t.version.choice(self) {
             for i in 0..t.questions.len() {
                 let q = &t.questions[i];
-                if let Some(answer) = q.choice(&self) {
-                    if answer == k[v as usize][i as usize] {
+                if let Some(answer) = q.choice(self) {
+                    if answer == k[v as usize][i] {
                         score += 1;
                     }
                 }
@@ -170,14 +170,14 @@ impl Scan {
             drawing::draw_cross_mut(&mut image, RED, coord.x as i32, coord.y as i32);
         }
 
-        if let Some(v) = t.version.choice(&self) {
+        if let Some(v) = t.version.choice(self) {
             let thebox = t.version.boxes[v as usize];
             draw_circle_around_box(&mut image, trafo(thebox.a), trafo(thebox.b), GREEN);
 
             for i in 0..t.questions.len() {
                 let q = &t.questions[i];
-                let correct = k[v as usize][i as usize] as usize;
-                let color = match q.choice(&self) {
+                let correct = k[v as usize][i] as usize;
+                let color = match q.choice(self) {
                     Some(answer) => {
                         if answer as usize == correct {
                             score += 1;
@@ -197,7 +197,7 @@ impl Scan {
 
         for i in 0..t.id_questions.len() {
             let q = &t.id_questions[i];
-            if let Some(idx) = q.choice(&self) {
+            if let Some(idx) = q.choice(self) {
                 let tl = trafo(q.boxes[idx as usize].a);
                 let br = trafo(q.boxes[idx as usize].b);
                 draw_circle_around_box(&mut image, tl, br, GREEN);
@@ -206,8 +206,8 @@ impl Scan {
 
         ImageReport {
             image,
-            sid: self.id(&t),
-            version: t.version.choice(&self),
+            sid: self.id(t),
+            version: t.version.choice(self),
             score,
             identifier: identifier.to_string(),
         }

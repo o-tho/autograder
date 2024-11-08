@@ -83,8 +83,8 @@ pub fn generate_reports_for_image_container(
                 img: i.1.clone(),
                 transformation: None,
             };
-            scan.transformation = scan.find_transformation(&template);
-            scan.generate_imagereport(&template, &key, &format!("page{}", i.0))
+            scan.transformation = scan.find_transformation(template);
+            scan.generate_imagereport(template, key, &format!("page{}", i.0))
         })
         .collect();
 

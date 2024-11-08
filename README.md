@@ -1,4 +1,4 @@
-# autograder v0.1.0
+# autograder
 
 ## Automatically grade MCQ exams using optical mark recognition
 
