@@ -5,6 +5,10 @@
 Autograder allows you to automatically grade MCQ exams. It is written in pure
 rust and runs both in the command line and the modern web browsers using wasm.
 
+## Installation
+
+`cargo run help` and `trunk serve` should work just fine.
+
 
 ## Background
 
