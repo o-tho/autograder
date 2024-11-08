@@ -7,7 +7,9 @@ rust and runs both in the command line and the modern web browsers using wasm.
 
 ## Installation
 
-`cargo run help` and `trunk serve` should work just fine.
+`cargo run help` and `trunk serve` should work just fine. You can see a demo on
+[GitHub pages](https://oqpvc.github.io/autograder/). Note that all computations
+are done within the browser and no sensitive files will be transmitted anywhere.
 
 
 ## Background
