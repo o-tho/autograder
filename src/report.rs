@@ -47,7 +47,9 @@ pub fn create_zip_from_imagereports(
     // Create a buffer to hold the zip file in memory
     let mut zip_buffer = Cursor::new(Vec::new());
     let mut zip_writer = ZipWriter::new(&mut zip_buffer);
+    let mut wrt = csv::Writer::from_writer(std::io::Cursor::new(Vec::new()));
 
+    wrt.write_record(&["Filename", "ID", "Score"])?;
     for (index, report) in reports.iter().enumerate() {
         // Encode each image as PNG into a separate buffer
         let mut image_buffer = Vec::new();
@@ -56,6 +58,8 @@ pub fn create_zip_from_imagereports(
         // Define a filename for each image within the zip
         let file_name = report.save_filename(&"".to_string());
 
+        wrt.serialize((&file_name, report.sid, report.score))?;
+
         // Add the encoded image to the zip archive
         zip_writer.start_file::<String, ()>(
             file_name,
@@ -63,6 +67,13 @@ pub fn create_zip_from_imagereports(
         )?;
         zip_writer.write_all(&image_buffer)?;
     }
+
+    let csvdata = wrt.into_inner()?.into_inner();
+    zip_writer.start_file::<String, ()>(
+        "results.csv".to_string(),
+        FileOptions::default().compression_method(zip::CompressionMethod::Deflated),
+    )?;
+    zip_writer.write_all(&csvdata)?;
 
     // Finalize the zip archive
     zip_writer.finish()?;

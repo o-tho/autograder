@@ -89,7 +89,7 @@ impl CreateTemplate {
     pub fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
         SidePanel::left("controls_panel")
             .resizable(true)
-            .min_width(ctx.screen_rect().width() * 0.3) // Set to 30% of the screen width
+            .min_width(ctx.screen_rect().width() * 0.25) // Set to 30% of the screen width
             .show(ctx, |ui| {
                 ScrollArea::vertical().show(ui, |ui| {
                     ui.heading("Template Settings");
@@ -185,18 +185,38 @@ impl CreateTemplate {
                                 &mut center.y,
                             );
                         }
-
+                        text_box_with_label(
+                            ui,
+                            "(Inner) circle radius",
+                            &mut self.circle_settings.radius,
+                        );
                         if self.original_image.is_some() {
                             if ui
                                 .button("🎯 Find precise circle center & radius")
                                 .clicked()
                             {
-                                log::info!("i need to do the thing :(");
+                                let template = self.to_template();
+                                let scan = Scan {
+                                    img: binary_image_from_image(
+                                        self.original_image.clone().unwrap(),
+                                    ),
+                                    transformation: None,
+                                };
+
+                                if let Some(circle_centers_with_radius) = scan
+                                    .real_centers_with_radius(
+                                        self.circle_settings.centers,
+                                        self.circle_settings.radius,
+                                    )
+                                {
+                                    self.circle_settings.centers = circle_centers_with_radius.0;
+                                    self.circle_settings.radius = circle_centers_with_radius.1;
+                                }
                             };
                         }
                     });
                     if self.original_image.is_some() {
-                        if ui.button("Do the thing!").clicked() {
+                        if ui.button("📄 Preview!").clicked() {
                             let template = self.to_template();
                             let scan = Scan {
                                 img: binary_image_from_image(self.original_image.clone().unwrap()),
@@ -207,6 +227,11 @@ impl CreateTemplate {
                             let dynamic_image = image::DynamicImage::ImageRgb8(result);
                             self.update_texture(ui, &dynamic_image);
                         }
+                        download_button(
+                            ui,
+                            "💾 Download Json",
+                            serde_json::to_vec(&self.to_template()).unwrap(),
+                        );
                     }
                 });
             });
@@ -307,11 +332,11 @@ impl Default for CircleSettings {
     fn default() -> Self {
         Self {
             centers: [
-                Point { x: 293, y: 269 },
-                Point { x: 2240, y: 270 },
-                Point { x: 2240, y: 3116 },
+                Point { x: 294, y: 268 },
+                Point { x: 2242, y: 268 },
+                Point { x: 2242, y: 3114 },
             ],
-            radius: 47,
+            radius: 45,
         }
     }
 }

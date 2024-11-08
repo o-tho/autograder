@@ -126,6 +126,14 @@ impl Scan {
         for c in t.circle_centers {
             let coord = trafo(c);
             drawing::draw_cross_mut(&mut image, RED, coord.x as i32, coord.y as i32);
+            for i in 0..4 {
+                drawing::draw_hollow_circle_mut(
+                    &mut image,
+                    (coord.x as i32, coord.y as i32),
+                    (t.circle_radius + i) as i32,
+                    RED,
+                );
+            }
         }
 
         let mut all_questions = t.questions.clone();
@@ -334,6 +342,34 @@ impl Scan {
         }
 
         points
+    }
+    pub fn real_centers_with_radius(
+        &self,
+        approx_centers: [Point; 3],
+        approx_radius: u32,
+    ) -> Option<([Point; 3], u32)> {
+        let max_radius = ((approx_radius as f64) * 1.05).round() as u32;
+        let real_centers: Vec<Point> = approx_centers
+            .iter()
+            .map(|p| self.real_center(*p, max_radius))
+            .collect::<Option<Vec<Point>>>()?;
+
+        let real_radii: Vec<f64> = real_centers
+            .iter()
+            .map(|c| {
+                let boundary_points =
+                    find_inner_boundary_points(*c, max_radius, &self.img, 3).unwrap();
+                let distances = boundary_points.map(|p| c.distance(p) as f64);
+                distances.iter().sum::<f64>() / 3.0
+            })
+            .collect();
+
+        let average_radius = real_radii.iter().sum::<f64>() / real_radii.len() as f64;
+
+        Some((
+            [real_centers[0], real_centers[1], real_centers[2]],
+            average_radius.round() as u32,
+        ))
     }
 
     pub fn real_center(&self, approx_center: Point, max_radius: u32) -> Option<Point> {
