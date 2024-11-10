@@ -39,6 +39,31 @@ impl ImageReport {
             .image
             .write_to(&mut std::io::Cursor::new(buffer), image::ImageFormat::Png);
     }
+
+    pub fn add_to_zip<W: Write + std::io::Seek>(
+        &self,
+        zip_writer: &mut ZipWriter<W>,
+        csv_writer: &mut csv::Writer<std::io::Cursor<Vec<u8>>>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        // Encode the image as PNG into a separate buffer
+        let mut image_buffer = Vec::new();
+        self.write_to_buffer(&mut image_buffer);
+
+        // Define a filename for each image within the zip
+        let file_name = self.save_filename(&"".to_string());
+
+        // Serialize the metadata into the CSV writer
+        csv_writer.serialize((&file_name, self.sid, self.score))?;
+
+        // Add the encoded image to the zip archive
+        zip_writer.start_file::<String, ()>(
+            file_name,
+            FileOptions::default().compression_method(zip::CompressionMethod::Deflated),
+        )?;
+        zip_writer.write_all(&image_buffer)?;
+
+        Ok(())
+    }
 }
 
 pub fn create_zip_from_imagereports(
@@ -47,33 +72,23 @@ pub fn create_zip_from_imagereports(
     // Create a buffer to hold the zip file in memory
     let mut zip_buffer = Cursor::new(Vec::new());
     let mut zip_writer = ZipWriter::new(&mut zip_buffer);
-    let mut wrt = csv::Writer::from_writer(std::io::Cursor::new(Vec::new()));
 
-    wrt.write_record(["Filename", "ID", "Score"])?;
+    // Initialize CSV writer for metadata
+    let mut csv_writer = csv::Writer::from_writer(std::io::Cursor::new(Vec::new()));
+    csv_writer.write_record(["Filename", "ID", "Score"])?;
+
+    // Add each report to the zip file using `add_to_zip`
     for report in reports.iter() {
-        // Encode each image as PNG into a separate buffer
-        let mut image_buffer = Vec::new();
-        report.write_to_buffer(&mut image_buffer);
-
-        // Define a filename for each image within the zip
-        let file_name = report.save_filename(&"".to_string());
-
-        wrt.serialize((&file_name, report.sid, report.score))?;
-
-        // Add the encoded image to the zip archive
-        zip_writer.start_file::<String, ()>(
-            file_name,
-            FileOptions::default().compression_method(zip::CompressionMethod::Deflated),
-        )?;
-        zip_writer.write_all(&image_buffer)?;
+        report.add_to_zip(&mut zip_writer, &mut csv_writer)?;
     }
 
-    let csvdata = wrt.into_inner()?.into_inner();
+    // Add CSV data to the zip archive
+    let csv_data = csv_writer.into_inner()?.into_inner();
     zip_writer.start_file::<String, ()>(
         "results.csv".to_string(),
         FileOptions::default().compression_method(zip::CompressionMethod::Deflated),
     )?;
-    zip_writer.write_all(&csvdata)?;
+    zip_writer.write_all(&csv_data)?;
 
     // Finalize the zip archive
     zip_writer.finish()?;

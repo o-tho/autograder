@@ -7,11 +7,12 @@ pub mod template;
 pub mod webapp;
 
 use crate::image_container::ImageContainer;
-use crate::report::ImageReport;
 use crate::scan::Scan;
-use rayon::prelude::*;
 use template::{ExamKey, Template};
 use wasm_bindgen::prelude::*;
+
+use itertools::Itertools;
+use rayon::prelude::*;
 
 // missing error types
 use pdf::error::PdfError;
@@ -73,23 +74,21 @@ pub fn generate_reports_for_image_container(
     key: &ExamKey,
     out_prefix: String,
 ) -> Result<(), ErrorWrapper> {
-    let scanned_docs = container.to_vector()?;
+    let iterator = container.to_iter();
 
-    let res: Vec<ImageReport> = scanned_docs
-        .par_iter()
-        .enumerate()
-        .map(|i| {
+    for chunk in &iterator.chunks(100) {
+        let images: Vec<image::GrayImage> = chunk.collect();
+
+        images.par_iter().enumerate().for_each(|(idx, img)| {
             let mut scan = Scan {
-                img: i.1.clone(),
+                img: img.clone(),
                 transformation: None,
             };
             scan.transformation = scan.find_transformation(template);
-            scan.generate_imagereport(template, key, &format!("page{}", i.0))
-        })
-        .collect();
-
-    for s in res {
-        s.save_to_file(&out_prefix);
+            let report = scan.generate_imagereport(template, key, &format!("page{}", idx));
+            report.save_to_file(&out_prefix);
+        });
     }
+
     Ok(())
 }

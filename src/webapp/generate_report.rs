@@ -6,10 +6,13 @@ use crate::template::{ExamKey, Template};
 use crate::webapp::utils::{download_button, upload_button, FileType};
 use egui::Context;
 use infer;
-use rayon::prelude::*;
 use serde_json;
+use std::io::Cursor;
+use std::io::Write;
 use std::sync::Arc;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
+use zip::write::FileOptions;
+use zip::ZipWriter;
 
 pub struct GenerateReport {
     template: Option<Template>,
@@ -48,7 +51,7 @@ impl eframe::App for GenerateReport {
                             self.data_channel.0.clone(),
                         );
                         if self.template.is_some() {
-                            ui.label("🎉️");
+                            ui.label("🎉");
                         }
                     });
                     ui.label("Upload a template file (.json).");
@@ -86,54 +89,43 @@ impl eframe::App for GenerateReport {
                 columns[3].vertical(|ui| {
                     if self.template.is_some() && self.key.is_some() && self.container.is_some() {
                         if ui.button("🚀 Do the thing!").clicked() {
-                            log::info!("Zhu Li! Get the container!");
+                            log::info!("Zhu Li! Do the thing!");
                             if let Some(arc_container) = &mut self.container {
                                 if let Some(container) = Arc::get_mut(arc_container) {
-                                    log::info!("Unpack it!");
-                                    match container.to_vector() {
-                                        Ok(vector) => {
-                                            let template = self.template.clone().unwrap();
-                                            let key = self.key.clone().unwrap();
-                                            log::info!("Generate the image reports!");
-                                            let res: Vec<ImageReport> = vector
-                                                .par_iter()
-                                                .enumerate()
-                                                .map(|i| {
-                                                    log::info!("Generating a report ...");
-                                                    let mut scan = Scan {
-                                                        img: i.1.clone(),
-                                                        transformation: None,
-                                                    };
-                                                    scan.transformation =
-                                                        scan.find_transformation(&template);
-                                                    scan.generate_imagereport(
-                                                        &template,
-                                                        &key,
-                                                        &format!("page{}", i.0),
-                                                    )
-                                                })
-                                                .collect();
-
-                                            log::info!("Create a zip file!");
-                                            let zipfile =
-                                                create_zip_from_imagereports(&res).unwrap();
-                                            self.zipped_results = Some(zipfile);
-
-                                            log::info!("Display a preview!");
-                                            let result = &res[0];
-
-                                            let display = rgb_to_egui_color_image(&result.image);
-                                            self.preview_texture = Some(ui.ctx().load_texture(
-                                                "displayed_image",
-                                                display,
-                                                egui::TextureOptions::default(),
-                                            ));
-                                            log::info!("Zhu Li! You have done the thing!");
-                                        }
-                                        Err(err) => {
-                                            log::error!("Error calling to_vector: {:?}", err);
-                                        }
+                                    let mut zip_buffer = Cursor::new(Vec::new());
+                                    let mut zip_writer = ZipWriter::new(&mut zip_buffer);
+                                    let mut csv_writer =
+                                        csv::Writer::from_writer(std::io::Cursor::new(Vec::new()));
+                                    csv_writer.write_record(["Filename", "ID", "Score"]);
+                                    log::info!("Output files are set up, starting to iterate over the input images!");
+                                    for (idx, image) in container.to_iter().enumerate() {
+                                        log::info!("I'm working on page {}", idx + 1);
+                                        let mut scan = Scan {
+                                            img: image.clone(),
+                                            transformation: None,
+                                        };
+                                        scan.transformation = scan
+                                            .find_transformation(&self.template.clone().unwrap());
+                                        let report = scan.generate_imagereport(
+                                            &self.template.clone().unwrap(),
+                                            &self.key.clone().unwrap(),
+                                            &format!("page{}", idx),
+                                        );
+                                        report.add_to_zip(&mut zip_writer, &mut csv_writer);
                                     }
+                                    let csv_data = csv_writer.into_inner().unwrap().into_inner();
+                                    zip_writer.start_file::<String, ()>(
+                                        "results.csv".to_string(),
+                                        FileOptions::default()
+                                            .compression_method(zip::CompressionMethod::Deflated),
+                                    );
+                                    zip_writer.write_all(&csv_data);
+
+                                    // Finalize the zip archive
+                                    zip_writer.finish();
+
+                                    self.zipped_results = Some(zip_buffer.into_inner());
+                                    log::info!("The thing has been done!");
                                 }
                             }
                         }
