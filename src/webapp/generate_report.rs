@@ -1,11 +1,13 @@
 use crate::image_container::{ImageContainer, PdfContainer, SingleImageContainer, TiffContainer};
 use crate::image_helpers::rgb_to_egui_color_image;
-use crate::report::{create_zip_from_imagereports, ImageReport};
+use crate::report::ImageReport;
 use crate::scan::Scan;
 use crate::template::{ExamKey, Template};
 use crate::webapp::utils::{download_button, upload_button, FileType};
 use egui::Context;
 use infer;
+use itertools::Itertools;
+use rayon::prelude::*;
 use serde_json;
 use std::io::Cursor;
 use std::io::Write;
@@ -96,33 +98,59 @@ impl eframe::App for GenerateReport {
                                     let mut zip_writer = ZipWriter::new(&mut zip_buffer);
                                     let mut csv_writer =
                                         csv::Writer::from_writer(std::io::Cursor::new(Vec::new()));
-                                    csv_writer.write_record(["Filename", "ID", "Score"]);
+                                    let _ = csv_writer.write_record(["Filename", "ID", "Score"]);
+
+                                    let template = self.template.clone().unwrap();
+                                    let key = self.key.clone().unwrap();
+
                                     log::info!("Output files are set up, starting to iterate over the input images!");
-                                    for (idx, image) in container.to_iter().enumerate() {
-                                        log::info!("I'm working on page {}", idx + 1);
-                                        let mut scan = Scan {
-                                            img: image.clone(),
-                                            transformation: None,
-                                        };
-                                        scan.transformation = scan
-                                            .find_transformation(&self.template.clone().unwrap());
-                                        let report = scan.generate_imagereport(
-                                            &self.template.clone().unwrap(),
-                                            &self.key.clone().unwrap(),
-                                            &format!("page{}", idx),
-                                        );
-                                        report.add_to_zip(&mut zip_writer, &mut csv_writer);
+                                    let iterator = container.to_iter();
+
+                                    let mut turn = 0;
+                                    let chunksize = 100;
+
+                                    log::info!("Working on images {}-{}", turn*chunksize, (turn+1)*chunksize);
+                                    for chunk in &iterator.chunks(chunksize) {
+                                        let images: Vec<image::GrayImage> = chunk.collect();
+                                        let results: Vec<ImageReport> = images.par_iter().enumerate().map(|(idx, img)| {
+                                            log::info!("processing {}", turn*chunksize + idx);
+                                            let mut scan = Scan {
+                                                img: img.clone(),
+                                                transformation: None,
+                                            };
+                                            scan.transformation = scan.find_transformation(&template);
+                                            scan.generate_imagereport(
+                                                &template,
+                                                &key,
+                                                &format!("page{}", idx + turn * chunksize),
+                                            )
+                                        }).collect();
+
+                                        for r in &results {
+                                           let _ = r.add_to_zip(&mut zip_writer, &mut csv_writer);
+                                        }
+
+
+                                        let display = rgb_to_egui_color_image(&results[0].image);
+                                        self.preview_texture = Some(ui.ctx().load_texture(
+                                            "displayed_image",
+                                            display,
+                                            egui::TextureOptions::default(),
+                                        ));
+
+                                        turn += 1;
+
                                     }
+
                                     let csv_data = csv_writer.into_inner().unwrap().into_inner();
-                                    zip_writer.start_file::<String, ()>(
+                                    let _ = zip_writer.start_file::<String, ()>(
                                         "results.csv".to_string(),
                                         FileOptions::default()
                                             .compression_method(zip::CompressionMethod::Deflated),
                                     );
-                                    zip_writer.write_all(&csv_data);
+                                    let _ = zip_writer.write_all(&csv_data);
 
-                                    // Finalize the zip archive
-                                    zip_writer.finish();
+                                    let _ = zip_writer.finish();
 
                                     self.zipped_results = Some(zip_buffer.into_inner());
                                     log::info!("The thing has been done!");

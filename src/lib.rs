@@ -76,7 +76,10 @@ pub fn generate_reports_for_image_container(
 ) -> Result<(), ErrorWrapper> {
     let iterator = container.to_iter();
 
-    for chunk in &iterator.chunks(100) {
+    let mut turn = 0;
+    let chunksize = 100;
+
+    for chunk in &iterator.chunks(chunksize) {
         let images: Vec<image::GrayImage> = chunk.collect();
 
         images.par_iter().enumerate().for_each(|(idx, img)| {
@@ -85,9 +88,14 @@ pub fn generate_reports_for_image_container(
                 transformation: None,
             };
             scan.transformation = scan.find_transformation(template);
-            let report = scan.generate_imagereport(template, key, &format!("page{}", idx));
+            let report = scan.generate_imagereport(
+                template,
+                key,
+                &format!("page{}", idx + turn * chunksize),
+            );
             report.save_to_file(&out_prefix);
         });
+        turn += 1;
     }
 
     Ok(())

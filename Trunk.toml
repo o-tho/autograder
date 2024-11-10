@@ -1,1 +1,2 @@
-[serve]
+[watch]
+ignore = ["output/", "private/"]
