@@ -7,23 +7,40 @@ use crate::webapp::utils::{download_button, upload_button, FileType};
 use egui::Context;
 use infer;
 use itertools::Itertools;
-use poll_promise::Promise;
 use rayon::prelude::*;
 use serde_json;
+use std::cell::RefCell;
 use std::io::Cursor;
 use std::io::Write;
-use std::sync::{Arc, Mutex};
+use std::rc::Rc;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use zip::write::FileOptions;
 use zip::ZipWriter;
 
+use wasm_bindgen_futures::spawn_local;
+
 pub struct GenerateReport {
     template: Option<Template>,
     key: Option<ExamKey>,
-    container: Option<Arc<Mutex<dyn ImageContainer + Send + Sync>>>,
-    zipped_results: Option<Promise<Option<Vec<u8>>>>,
+    raw_container_data: Option<Vec<u8>>,
+    zipped_results: Rc<RefCell<Option<Vec<u8>>>>,
     data_channel: (Sender<(FileType, Vec<u8>)>, Receiver<(FileType, Vec<u8>)>),
     preview_texture: Option<egui::TextureHandle>,
+    status: Rc<RefCell<Option<String>>>,
+}
+
+impl Clone for GenerateReport {
+    fn clone(&self) -> Self {
+        Self {
+            template: self.template.clone(),
+            key: self.key.clone(),
+            raw_container_data: self.raw_container_data.clone(),
+            zipped_results: Rc::clone(&self.zipped_results),
+            data_channel: channel(50),
+            preview_texture: self.preview_texture.clone(),
+            status: self.status.clone(),
+        }
+    }
 }
 
 impl Default for GenerateReport {
@@ -32,21 +49,60 @@ impl Default for GenerateReport {
         Self {
             template: None,
             key: None,
-            container: None,
+            raw_container_data: None,
             data_channel: (sender, receiver),
-            zipped_results: None,
+            zipped_results: Rc::new(RefCell::new(None)),
             preview_texture: None,
+            status: Rc::new(RefCell::new(None)),
         }
     }
 }
 
+fn raw_data_to_container(data: &Vec<u8>) -> Option<Box<dyn ImageContainer + '_>> {
+    let clonedata = data.clone();
+    if let Some(kind) = infer::get(&clonedata) {
+        match kind.mime_type() {
+            "application/pdf" => {
+                let pdf = pdf::file::FileOptions::cached().load(clonedata).unwrap();
+                let container = PdfContainer { pdf_file: pdf };
+                return Some(Box::new(container));
+            }
+            "image/tiff" => {
+                let buffer = std::io::Cursor::new(clonedata);
+                let tiff = tiff::decoder::Decoder::new(buffer).unwrap();
+                let container = TiffContainer { decoder: tiff };
+                return Some(Box::new(container));
+            }
+            "image/png" => {
+                let image =
+                    image::load_from_memory_with_format(&clonedata, image::ImageFormat::Png)
+                        .unwrap();
+                let container = SingleImageContainer { image: image };
+                return Some(Box::new(container));
+            }
+            "image/jpeg" => {
+                let image =
+                    image::load_from_memory_with_format(&clonedata, image::ImageFormat::Jpeg)
+                        .unwrap();
+                let container = SingleImageContainer { image: image };
+                return Some(Box::new(container));
+            }
+            _ => log::error!(
+                "{}",
+                format!("Unsupported container format {}", kind.mime_type())
+            ),
+        }
+    }
+    None
+}
+
 impl GenerateReport {
-    pub fn generate_reports(&mut self) {
+    pub async fn generate_reports(&mut self) {
         let template = self.template.clone().unwrap();
         let key = self.key.clone().unwrap();
 
-        if let Some(container) = self.container.clone() {
-            let promise = Promise::spawn_local(async move {
+        if let Some(container_data) = self.raw_container_data.clone() {
+            let _ = async move {
                 let mut zip_buffer = Cursor::new(Vec::new());
                 let mut zip_writer = ZipWriter::new(&mut zip_buffer);
                 let mut csv_writer = csv::Writer::from_writer(std::io::Cursor::new(Vec::new()));
@@ -54,17 +110,20 @@ impl GenerateReport {
 
                 log::info!("Output files are set up, starting to iterate over the input images!");
 
-                let mut container_lock = container.lock().unwrap();
-                let iterator = container_lock.to_iter();
+                let mut container = raw_data_to_container(&container_data).unwrap();
+                let iterator = container.to_iter();
 
                 let mut turn = 0;
-                let chunksize = 100;
+                let chunksize = 2;
 
                 log::info!(
                     "Working on images {}-{}",
                     turn * chunksize,
                     (turn + 1) * chunksize
                 );
+                *self.status.borrow_mut() =
+                    Some(format!("Working on the first {} scans", chunksize));
+                gloo_timers::future::TimeoutFuture::new(50).await;
                 for chunk in &iterator.chunks(chunksize) {
                     let images: Vec<image::GrayImage> = chunk.collect();
                     let results: Vec<ImageReport> = images
@@ -97,6 +156,9 @@ impl GenerateReport {
                     // ));
 
                     turn += 1;
+                    *self.status.borrow_mut() =
+                        Some(format!("processed {} scans", turn * chunksize));
+                    gloo_timers::future::TimeoutFuture::new(50).await;
                 }
 
                 let csv_data = csv_writer.into_inner().unwrap().into_inner();
@@ -110,10 +172,9 @@ impl GenerateReport {
 
                 log::info!("The thing has been done!");
 
-                Some(zip_buffer.into_inner())
-            });
-
-            self.zipped_results = Some(promise);
+                *self.zipped_results.borrow_mut() = Some(zip_buffer.into_inner());
+            }
+            .await;
         }
     }
 }
@@ -161,31 +222,35 @@ impl eframe::App for GenerateReport {
                             FileType::Container,
                             self.data_channel.0.clone(),
                         );
-                        if self.container.is_some() {
+                        if self.raw_container_data.is_some() {
                             ui.label("❤");
                         }
                     });
                     ui.label("Upload an image container (.pdf, .tiff, .jpg, .png)");
                 });
                 columns[3].vertical(|ui| {
-                    if self.template.is_some() && self.key.is_some() && self.container.is_some() {
+                    if self.template.is_some()
+                        && self.key.is_some()
+                        && self.raw_container_data.is_some()
+                    {
                         if ui.button("🚀 Do the thing!").clicked() {
                             log::info!("Zhu Li! Do the thing!");
-                            self.generate_reports();
+                            let mut cloned_self = self.clone();
+                            spawn_local(async move {
+                                cloned_self.generate_reports().await;
+                            });
                             ctx.request_repaint();
                         }
                     }
                 });
 
                 columns[4].vertical(|ui| {
-                    if let Some(promise) = &self.zipped_results {
-                        if let Some(result) = promise.ready() {
-                            if let Some(zipfile) = result.clone() {
-                                download_button(ui, "💾 Save results as zip file", zipfile);
-                            }
-                        } else {
-                            ui.spinner();
-                        }
+                    if let Some(zipped_data) = &*self.zipped_results.borrow() {
+                        download_button(ui, "💾 Save results as zip file", zipped_data.clone());
+                        self.status = Rc::new(RefCell::new(None));
+                    }
+                    if let Some(status) = &*self.status.borrow() {
+                        ui.label(status);
                     }
                 });
             });
@@ -216,46 +281,8 @@ impl eframe::App for GenerateReport {
                         }
                     }
                     FileType::Container => {
-                        if let Some(kind) = infer::get(&data) {
-                            match kind.mime_type() {
-                                "application/pdf" => {
-                                    let pdf = pdf::file::FileOptions::cached().load(data).unwrap();
-                                    let container = PdfContainer { pdf_file: pdf };
-
-                                    self.container = Some(Arc::new(Mutex::new(container)));
-                                }
-                                "image/tiff" => {
-                                    let buffer = std::io::Cursor::new(data);
-                                    let tiff = tiff::decoder::Decoder::new(buffer).unwrap();
-                                    let container = TiffContainer { decoder: tiff };
-                                    self.container = Some(Arc::new(Mutex::new(container)));
-                                }
-                                "image/png" => {
-                                    let image = image::load_from_memory_with_format(
-                                        &data,
-                                        image::ImageFormat::Png,
-                                    )
-                                    .unwrap();
-                                    let container = SingleImageContainer { image: image };
-                                    self.container = Some(Arc::new(Mutex::new(container)));
-                                }
-                                "image/jpeg" => {
-                                    let image = image::load_from_memory_with_format(
-                                        &data,
-                                        image::ImageFormat::Jpeg,
-                                    )
-                                    .unwrap();
-                                    let container = SingleImageContainer { image: image };
-                                    self.container = Some(Arc::new(Mutex::new(container)));
-                                }
-                                _ => log::error!(
-                                    "{}",
-                                    format!("Unsupported container format {}", kind.mime_type())
-                                ),
-                            }
-                        } else {
-                            log::error!("Could not infer file type");
-                        }
+                        log::info!("uploaded data");
+                        self.raw_container_data = Some(data);
                     }
                     _ => {}
                 }
