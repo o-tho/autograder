@@ -219,8 +219,7 @@ impl eframe::App for GenerateReport {
                         if let Some(kind) = infer::get(&data) {
                             match kind.mime_type() {
                                 "application/pdf" => {
-                                    let pdf =
-                                        pdf::file::FileOptions::uncached().load(data).unwrap();
+                                    let pdf = pdf::file::FileOptions::cached().load(data).unwrap();
                                     let container = PdfContainer { pdf_file: pdf };
 
                                     self.container = Some(Arc::new(Mutex::new(container)));
@@ -229,6 +228,15 @@ impl eframe::App for GenerateReport {
                                     let buffer = std::io::Cursor::new(data);
                                     let tiff = tiff::decoder::Decoder::new(buffer).unwrap();
                                     let container = TiffContainer { decoder: tiff };
+                                    self.container = Some(Arc::new(Mutex::new(container)));
+                                }
+                                "image/png" => {
+                                    let image = image::load_from_memory_with_format(
+                                        &data,
+                                        image::ImageFormat::Png,
+                                    )
+                                    .unwrap();
+                                    let container = SingleImageContainer { image: image };
                                     self.container = Some(Arc::new(Mutex::new(container)));
                                 }
                                 "image/jpeg" => {

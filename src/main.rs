@@ -2,6 +2,7 @@
 use autograder::ErrorWrapper;
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> Result<(), ErrorWrapper> {
+    use autograder::debug_report;
     use autograder::generate_reports_for_image_container;
     use autograder::image_container::{PdfContainer, SingleImageContainer, TiffContainer};
     use autograder::template::{ExamKey, Template};
@@ -36,12 +37,14 @@ fn main() -> Result<(), ErrorWrapper> {
                 ),
         )
         .subcommand(
-            Command::new("debug").about("Run in debug mode").arg(
-                Arg::new("config")
-                    .long("config")
-                    .value_name("CONFIG")
-                    .help("Specify the debug configuration file"),
-            ),
+            Command::new("debug")
+                .about("Run in debug mode")
+                .arg(
+                    Arg::new("template")
+                        .default_value("tests/assets/template.json")
+                        .help("template configuration"),
+                )
+                .arg(Arg::new("image").help("single image to be debugged")),
         )
         .get_matches();
 
@@ -66,7 +69,7 @@ fn main() -> Result<(), ErrorWrapper> {
 
             match imagefile.extension().and_then(|ext| ext.to_str()) {
                 Some("pdf") => {
-                    let file = pdf::file::FileOptions::uncached().open(imagefile).unwrap();
+                    let file = pdf::file::FileOptions::cached().open(imagefile).unwrap();
                     let mut container = PdfContainer { pdf_file: file };
 
                     generate_reports_for_image_container(&mut container, &t, &k, outpath)?
@@ -90,8 +93,22 @@ fn main() -> Result<(), ErrorWrapper> {
                 _ => println!("Unsupported file type: {:?}", imagefile),
             }
         }
-        Some(("debug", _sub_matches)) => {
-            println!("Not implemented");
+        Some(("debug", sub_matches)) => {
+            let templatepath = sub_matches
+                .get_one::<String>("template")
+                .unwrap()
+                .to_string();
+
+            let imagepath = sub_matches.get_one::<String>("image").unwrap().to_string();
+
+            let t: Template = serde_json::from_reader(std::fs::File::open(templatepath)?)?;
+
+            let imagefile = Path::new(&imagepath);
+            let image = image::open(imagefile)?;
+
+            let mut container = SingleImageContainer { image };
+
+            debug_report(&mut container, &t);
         }
         _ => println!("Please specify a valid subcommand (e.g., `report` or `debug`)."),
     }

@@ -2,15 +2,22 @@ use crate::image_helpers::{binary_image_from_image, fax_to_grayimage};
 use crate::ErrorWrapper;
 use image::{DynamicImage, GrayImage};
 
-use pdf::file::NoCache;
+use pdf::any::AnySync;
 use pdf::file::NoLog;
+use pdf::file::SyncCache;
 use pdf::object::*;
+use std::sync::Arc;
 use tiff::decoder::DecodingResult;
 
 use std::iter;
 
 pub struct PdfContainer {
-    pub pdf_file: pdf::file::File<Vec<u8>, NoCache, NoCache, NoLog>,
+    pub pdf_file: pdf::file::File<
+        Vec<u8>,
+        Arc<SyncCache<PlainRef, Result<AnySync, Arc<pdf::PdfError>>>>,
+        Arc<SyncCache<PlainRef, Result<Arc<[u8]>, Arc<pdf::PdfError>>>>,
+        NoLog,
+    >,
 }
 
 pub struct TiffContainer<R: std::io::BufRead + std::io::Seek> {

@@ -7,6 +7,9 @@ pub mod template;
 pub mod webapp;
 
 use crate::image_container::ImageContainer;
+use crate::image_container::SingleImageContainer;
+use crate::image_helpers::binary_image_from_image;
+
 use crate::scan::Scan;
 use template::{ExamKey, Template};
 use wasm_bindgen::prelude::*;
@@ -99,4 +102,14 @@ pub fn generate_reports_for_image_container(
     }
 
     Ok(())
+}
+
+pub fn debug_report(container: &SingleImageContainer, template: &Template) {
+    let mut scan = Scan {
+        img: binary_image_from_image(container.image.clone()),
+        transformation: None,
+    };
+    scan.transformation = scan.find_transformation(template);
+
+    scan.debug_report(template);
 }
