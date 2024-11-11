@@ -7,7 +7,6 @@ use crate::webapp::utils::{download_button, upload_button, FileType};
 use egui::Context;
 use infer;
 use itertools::Itertools;
-use rayon::prelude::*;
 use serde_json;
 use std::cell::RefCell;
 use std::io::Cursor;
@@ -114,7 +113,7 @@ impl GenerateReport {
                 let iterator = container.to_iter();
 
                 let mut turn = 0;
-                let chunksize = 2;
+                let chunksize = 20;
 
                 log::info!(
                     "Working on images {}-{}",
@@ -127,7 +126,7 @@ impl GenerateReport {
                 for chunk in &iterator.chunks(chunksize) {
                     let images: Vec<image::GrayImage> = chunk.collect();
                     let results: Vec<ImageReport> = images
-                        .par_iter()
+                        .iter()
                         .enumerate()
                         .map(|(idx, img)| {
                             log::info!("processing {}", turn * chunksize + idx);
