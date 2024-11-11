@@ -52,7 +52,7 @@ impl Question {
         self.boxes
             .clone()
             .into_iter()
-            .map(|b| (b.blackness(&scan) * 100.0).round() / 100.0)
+            .map(|b| b.blackness(&scan))
             .collect()
     }
 
@@ -63,7 +63,12 @@ impl Question {
             .collect()
     }
     pub fn choice(&self, scan: &Scan) -> Option<u32> {
-        let blackness = self.blacknesses(scan);
+        let blackness: Vec<f64> = self
+            .blacknesses(scan)
+            .iter()
+            .map(|&v| if v.is_nan() { 0.0 } else { v })
+            .collect();
+
         if blackness.len() < 2 {
             return None;
         }
