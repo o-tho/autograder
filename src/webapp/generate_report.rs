@@ -24,6 +24,7 @@ pub struct GenerateReport {
     raw_container_data: Option<Vec<u8>>,
     zipped_results: Rc<RefCell<Option<Vec<u8>>>>,
     data_channel: (Sender<(FileType, Vec<u8>)>, Receiver<(FileType, Vec<u8>)>),
+    preview_image: Rc<RefCell<Option<image::RgbImage>>>,
     preview_texture: Option<egui::TextureHandle>,
     status: Rc<RefCell<Option<String>>>,
 }
@@ -36,6 +37,7 @@ impl Clone for GenerateReport {
             raw_container_data: self.raw_container_data.clone(),
             zipped_results: Rc::clone(&self.zipped_results),
             data_channel: channel(50),
+            preview_image: self.preview_image.clone(),
             preview_texture: self.preview_texture.clone(),
             status: self.status.clone(),
         }
@@ -51,6 +53,7 @@ impl Default for GenerateReport {
             raw_container_data: None,
             data_channel: (sender, receiver),
             zipped_results: Rc::new(RefCell::new(None)),
+            preview_image: Rc::new(RefCell::new(None)),
             preview_texture: None,
             status: Rc::new(RefCell::new(None)),
         }
@@ -147,17 +150,14 @@ impl GenerateReport {
                         let _ = r.add_to_zip(&mut zip_writer, &mut csv_writer);
                     }
 
-                    // let display = rgb_to_egui_color_image(&results[0].image);
-                    // self.preview_texture = Some(ui.ctx().load_texture(
-                    //     "displayed_image",
-                    //     display,
-                    //     egui::TextureOptions::default(),
-                    // ));
+                    if self.preview_image.borrow().is_none() {
+                        *self.preview_image.borrow_mut() = Some(results[0].image.clone());
+                    }
 
                     turn += 1;
                     *self.status.borrow_mut() =
                         Some(format!("processed {} scans", turn * chunksize));
-                    gloo_timers::future::TimeoutFuture::new(50).await;
+                    gloo_timers::future::TimeoutFuture::new(100).await;
                 }
 
                 let csv_data = csv_writer.into_inner().unwrap().into_inner();
@@ -234,6 +234,8 @@ impl eframe::App for GenerateReport {
                     {
                         if ui.button("🚀 Do the thing!").clicked() {
                             log::info!("Zhu Li! Do the thing!");
+                            self.preview_texture = None;
+                            self.preview_image = Rc::new(RefCell::new(None));
                             let mut cloned_self = self.clone();
                             spawn_local(async move {
                                 cloned_self.generate_reports().await;
@@ -253,7 +255,19 @@ impl eframe::App for GenerateReport {
                     }
                 });
             });
-            // Conditionally display the computation button when all files are uploaded
+
+            // check if we need to create the texture
+            if self.preview_image.borrow().is_some() && self.preview_texture.is_none() {
+                log::info!("creating texture");
+                let display =
+                    rgb_to_egui_color_image(&self.preview_image.borrow().clone().unwrap());
+                self.preview_texture = Some(ui.ctx().load_texture(
+                    "displayed_image",
+                    display,
+                    egui::TextureOptions::default(),
+                ));
+            }
+
             if let Some(texture) = &self.preview_texture {
                 egui::ScrollArea::both().show(ui, |ui| {
                     ui.add(egui::Image::new(texture));

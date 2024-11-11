@@ -87,7 +87,7 @@ impl Question {
                 .filter(|&v| v != max)
                 .max_by(|a, b| a.partial_cmp(b).unwrap())?;
 
-            if max > second_highest + min / 2.0 {
+            if max > second_highest + min * 0.4 {
                 return Some(self.boxes[max_index].value);
             }
         }
