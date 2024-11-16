@@ -96,3 +96,17 @@ impl Question {
 }
 
 pub type ExamKey = Vec<Vec<u32>>;
+
+// check whether template and key are compatible: the number of versions needs
+// to match and every version needs to have answers for all questions.
+pub fn are_compatible(t: &Template, k: &ExamKey) -> bool {
+    if k.len() != t.version.boxes.len() {
+        return false;
+    }
+
+    if let Some(first_len) = k.first().map(|v| v.len()) {
+        k.iter().all(|v| v.len() == first_len) && first_len == t.questions.len()
+    } else {
+        false
+    }
+}
