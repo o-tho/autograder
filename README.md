@@ -73,12 +73,13 @@ correct.
 
 The most reliable way to scan exams is to use *Multipage Grayscale Tiffs*. PDFs
 are also supported, but we have encountered issues with Toshiba scanners which
-produced invalid JPGs, which we cannot handle. A resolution of 200dpi is sufficient.
+produced invalid JPGs inside the PDF, which we cannot handle. A resolution of
+150dpi is sufficient, maybe you can even get away with 100dpi.
 
 Scan to grayscale (and not to "black and white" or binary), because many
 scanners use bad algorithms for the conversion to pure black and white.
 `autograder` also uses pure black and white internally by converting grayscale
-to binary using Otesu's method.
+to binary using Otsu's method.
 
 In the *Generate Report* view you can upload a `template.json`, a `key.json` and
 an image container (like a multi-page tiff, a PDF, or a single image).
