@@ -4,6 +4,7 @@ pub mod point;
 pub mod report;
 pub mod scan;
 pub mod template;
+pub mod typst_helpers;
 pub mod webapp;
 
 use crate::image_container::ImageContainer;

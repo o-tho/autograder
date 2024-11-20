@@ -6,7 +6,9 @@ fn main() -> Result<(), ErrorWrapper> {
     use autograder::generate_reports_for_image_container;
     use autograder::image_container::{PdfContainer, SingleImageContainer, TiffContainer};
     use autograder::template::{ExamKey, Template};
-    use clap::{Arg, Command};
+    use autograder::typst_helpers::typst_frame_to_template;
+    use autograder::typst_helpers::*;
+    use clap::{value_parser, Arg, Command};
     use std::path::Path;
     let matches = Command::new("autograder")
         .about("automatically grade MCQ exams using optical mark recognition")
@@ -45,6 +47,45 @@ fn main() -> Result<(), ErrorWrapper> {
                         .help("template configuration"),
                 )
                 .arg(Arg::new("image").help("single image to be debugged")),
+        )
+        .subcommand(
+            Command::new("form")
+                .about("Generate a form and output the PDF, PNG and template.json")
+                .arg(
+                    Arg::new("qs")
+                        .long("qs")
+                        .required(true)
+                        .value_parser(value_parser!(u32))
+                        .help("Number of questions"),
+                )
+                .arg(
+                    Arg::new("idqs")
+                        .long("idqs")
+                        .required(true)
+                        .value_parser(value_parser!(u32))
+                        .help("Number of ID questions"),
+                )
+                .arg(
+                    Arg::new("versions")
+                        .long("versions")
+                        .required(true)
+                        .value_parser(value_parser!(u32))
+                        .help("Number of versions"),
+                )
+                .arg(
+                    Arg::new("choices")
+                        .long("choices")
+                        .required(true)
+                        .value_parser(value_parser!(u32))
+                        .help("Number of choices in each MCQ"),
+                )
+                .arg(
+                    Arg::new("outprefix")
+                        .long("outprefix")
+                        .value_name("PREFIX")
+                        .default_value("form")
+                        .help("Specify the output file prefix"),
+                ),
         )
         .get_matches();
 
@@ -109,6 +150,55 @@ fn main() -> Result<(), ErrorWrapper> {
             let mut container = SingleImageContainer { image };
 
             debug_report(&mut container, &t);
+        }
+        Some(("form", sub_matches)) => {
+            let qs = sub_matches.get_one::<u32>("qs").expect("required by clap");
+            let idqs = sub_matches
+                .get_one::<u32>("idqs")
+                .expect("required by clap");
+            let versions = sub_matches
+                .get_one::<u32>("versions")
+                .expect("required by clap");
+            let choices = sub_matches
+                .get_one::<u32>("choices")
+                .expect("required by clap");
+            let outprefix = sub_matches
+                .get_one::<String>("outprefix")
+                .expect("defaulted by clap");
+            let input = std::fs::read_to_string("assets/formtemplate.typ")?;
+
+            let code = format!(
+                r#"
+#let num_qs = {}
+#let num_idqs = {}
+#let num_answers = {}
+#let num_versions = {}
+{}
+"#,
+                qs, idqs, choices, versions, input
+            );
+
+            let wrapper = TypstWrapper::new(code);
+
+            let document = typst::compile(&wrapper)
+                .output
+                .expect("Error from Typst. This really should not happen. So sorry.");
+
+            let scale = 3.0;
+            let template = typst_frame_to_template(&document.pages[0].frame, scale);
+
+            let _ = serde_json::to_writer_pretty(
+                &std::fs::File::create(outprefix.to_owned() + ".json").unwrap(),
+                &template,
+            );
+
+            // println!("{:#?}", document);
+
+            let pdf = typst_pdf::pdf(&document, &typst_pdf::PdfOptions::default()).expect("bla");
+            let _ = std::fs::write(format!("{}.pdf", outprefix), pdf);
+
+            let _ = typst_render::render(&document.pages[0], scale as f32)
+                .save_png(outprefix.to_owned() + ".png");
         }
         _ => println!("Please specify a valid subcommand (e.g., `report` or `debug`)."),
     }

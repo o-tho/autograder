@@ -152,27 +152,33 @@ impl Scan {
     pub fn debug_report(&self, t: &Template) {
         println!("Generating debugging report ...");
 
-        println!("Version:");
+        let trafo = match self.transformation {
+            Some(tr) => std::boxed::Box::new(move |p: Point| tr.apply(p))
+                as std::boxed::Box<dyn Fn(Point) -> Point>,
+            None => std::boxed::Box::new(|p: Point| p) as std::boxed::Box<dyn Fn(Point) -> Point>,
+        };
 
-        let blacknesses: Vec<u32> = t.version.blacknesses_rounded(&self);
-        println!("{:?} -> {:?}", blacknesses, t.version.choice(&self));
+        println!("Version at ({:#?}):", trafo(t.version.boxes[0].a));
+
+        let blacknesses: Vec<u32> = t.version.blacknesses_rounded(self);
+        println!("{:?} -> {:?}", blacknesses, t.version.choice(self));
 
         println!("\nID Questions:");
 
         for (idx, q) in t.id_questions.clone().into_iter().enumerate() {
-            let blacknesses: Vec<u32> = q.blacknesses_rounded(&self);
-            println!("ID{}: {:?} -> {:?}", idx + 1, blacknesses, q.choice(&self));
+            let blacknesses: Vec<u32> = q.blacknesses_rounded(self);
+            println!("ID{}: {:?} -> {:?}", idx + 1, blacknesses, q.choice(self));
         }
 
         println!("\nMCQ:");
 
         for (idx, q) in t.questions.clone().into_iter().enumerate() {
-            let blacknesses: Vec<u32> = q.blacknesses_rounded(&self);
+            let blacknesses: Vec<u32> = q.blacknesses_rounded(self);
             println!(
                 "Q{:0>2}: {:?} -> {:?}",
                 idx + 1,
                 blacknesses,
-                q.choice(&self)
+                q.choice(self)
             );
         }
     }

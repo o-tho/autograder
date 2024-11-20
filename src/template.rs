@@ -52,7 +52,7 @@ impl Question {
         self.boxes
             .clone()
             .into_iter()
-            .map(|b| b.blackness(&scan))
+            .map(|b| b.blackness(scan))
             .collect()
     }
 
