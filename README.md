@@ -100,3 +100,8 @@ in ways that is not intended.
 A green circle means that autograder thinks that the selected bubble is the
 circled one, which according to the key is correct. A red circle shows the
 correct answer, meaning that the selected bubble is elsewhere.
+
+## Acknowledgements
+
+This project uses ![typst](https://github.com/typst/typst) for typesetting and
+ships with copies of the Linux Biolinum font by Philipp H Poll.
