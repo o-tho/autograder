@@ -2,9 +2,7 @@ use crate::point::Point;
 use crate::template::Box;
 use crate::template::Question;
 use crate::template::Template;
-use crate::webapp::create_template::{
-    CircleSettings, LayoutSettings, PositionSettings, QuestionSettings,
-};
+use crate::webapp::create_template::{CircleSettings, LayoutSettings, PositionSettings};
 use std::future::Future;
 use tokio::sync::mpsc::Sender;
 
@@ -16,6 +14,24 @@ pub enum FileType {
 }
 pub fn execute<F: Future<Output = ()> + 'static>(f: F) {
     wasm_bindgen_futures::spawn_local(f);
+}
+
+pub struct QuestionSettings {
+    pub num_qs: u32,
+    pub num_id_qs: u32,
+    pub num_versions: u32,
+    pub num_answers: u32,
+}
+
+impl Default for QuestionSettings {
+    fn default() -> Self {
+        Self {
+            num_qs: 20,
+            num_id_qs: 9,
+            num_versions: 4,
+            num_answers: 5,
+        }
+    }
 }
 
 pub fn upload_button(

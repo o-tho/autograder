@@ -1,4 +1,5 @@
 #![cfg(target_arch = "wasm32")]
+pub mod create_form;
 pub mod create_key;
 pub mod create_template;
 pub mod generate_report;

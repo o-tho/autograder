@@ -38,7 +38,18 @@ which is self-documented. The following is for the wasm web application.
 
 We need a template which tells us where every answer box is located on the page
 and where three large round circles on the page are to identify the position of
-a scan. For this, go to the *Create Template* view. Upload an image file (like .png) of
+a scan.
+
+You have two options for this. You can either use the *Create Form* view, which
+generates a PDF file to print (in A4) and the corresponding `template.json` file
+that you need to provide when you grade the exam.
+
+#### Using a custom form
+
+If you want to use a custom form, this is entirely possible, but significantly
+more painful.
+
+For this, go to the *Create Template* view. Upload an image file (like .png) of
 an empty form, preferably directly converted from a PDF file so nothing is
 skewed by a scanner. You need to enter the following information:
 
@@ -60,6 +71,10 @@ You should use an image editor like gimp to find out those coordinates.
 After entering this data and uploading an image file, you can hit "Preview" to
 see if everything goes well. You can then download the configuration to
 `template.json`
+
+If this does not work in your case, you will need to adapt the `template.json`
+by hand and provide the coordinates of the bounding boxes of all bubbles (top
+left corner and bottom right corner).
 
 ### The exam key
 
@@ -103,5 +118,5 @@ correct answer, meaning that the selected bubble is elsewhere.
 
 ## Acknowledgements
 
-This project uses ![typst](https://github.com/typst/typst) for typesetting and
+This project uses [typst](https://github.com/typst/typst) for typesetting and
 ships with copies of the Linux Biolinum font by Philipp H Poll.

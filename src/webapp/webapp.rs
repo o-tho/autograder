@@ -1,6 +1,7 @@
 use eframe::egui;
 use eframe::egui::Context;
 
+use crate::webapp::create_form::CreateForm;
 use crate::webapp::create_key::CreateKey;
 use crate::webapp::create_template::CreateTemplate;
 
@@ -11,6 +12,7 @@ pub struct WebApp {
     current_view: ViewType,
     generate_report: GenerateReport,
     create_template: CreateTemplate,
+    create_form: CreateForm,
     create_key: CreateKey,
     help: Help,
 }
@@ -18,6 +20,7 @@ pub struct WebApp {
 enum ViewType {
     GenerateReport,
     CreateTemplate,
+    CreateForm,
     CreateKey,
     Help,
 }
@@ -27,6 +30,7 @@ impl Default for WebApp {
         Self {
             current_view: ViewType::Help,
             generate_report: GenerateReport::default(),
+            create_form: CreateForm::default(),
             create_template: CreateTemplate::default(),
             create_key: CreateKey::default(),
             help: Help::default(),
@@ -42,6 +46,9 @@ impl eframe::App for WebApp {
                 if ui.button("Generate Report").clicked() {
                     self.current_view = ViewType::GenerateReport;
                 }
+                if ui.button("Create Form").clicked() {
+                    self.current_view = ViewType::CreateForm;
+                }
                 if ui.button("Create Template").clicked() {
                     self.current_view = ViewType::CreateTemplate;
                 }
@@ -56,6 +63,7 @@ impl eframe::App for WebApp {
 
         match self.current_view {
             ViewType::GenerateReport => self.generate_report.update(ctx, frame),
+            ViewType::CreateForm => self.create_form.update(ctx, frame),
             ViewType::CreateTemplate => self.create_template.update(ctx, frame),
             ViewType::CreateKey => self.create_key.update(ctx, frame),
             ViewType::Help => self.help.update(ctx, frame),

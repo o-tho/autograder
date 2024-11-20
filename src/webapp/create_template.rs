@@ -2,7 +2,9 @@ use crate::image_helpers::{binary_image_from_image, rgb_to_egui_color_image};
 use crate::point::Point;
 use crate::scan::Scan;
 use crate::template::Template;
-use crate::webapp::utils::{download_button, template_from_settings, upload_button, FileType};
+use crate::webapp::utils::{
+    download_button, template_from_settings, upload_button, FileType, QuestionSettings,
+};
 use eframe::egui::{CentralPanel, Context, ScrollArea, SidePanel, TextEdit, Ui};
 use eframe::Frame;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
@@ -265,25 +267,6 @@ impl CreateTemplate {
         });
     }
 }
-
-pub struct QuestionSettings {
-    pub num_qs: u32,
-    pub num_id_qs: u32,
-    pub num_versions: u32,
-    pub num_answers: u32,
-}
-
-impl Default for QuestionSettings {
-    fn default() -> Self {
-        Self {
-            num_qs: 20,
-            num_id_qs: 9,
-            num_versions: 4,
-            num_answers: 5,
-        }
-    }
-}
-
 pub struct LayoutSettings {
     pub box_height: u32,
     pub box_width: u32,
