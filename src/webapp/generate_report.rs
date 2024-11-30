@@ -19,8 +19,8 @@ use zip::ZipWriter;
 use wasm_bindgen_futures::spawn_local;
 
 pub struct GenerateReport {
-    template: Option<Template>,
-    key: Option<ExamKey>,
+    pub template: Option<Template>,
+    pub key: Option<ExamKey>,
     raw_container_data: Option<Vec<u8>>,
     zipped_results: Rc<RefCell<Option<Vec<u8>>>>,
     data_channel: (Sender<(FileType, Vec<u8>)>, Receiver<(FileType, Vec<u8>)>),

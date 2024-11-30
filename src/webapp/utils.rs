@@ -1,5 +1,6 @@
 use crate::point::Point;
 use crate::template::Box;
+use crate::template::ExamKey;
 use crate::template::Question;
 use crate::template::Template;
 use crate::webapp::create_template::{CircleSettings, LayoutSettings, PositionSettings};
@@ -152,4 +153,35 @@ pub fn question_builder(
     }
 
     result
+}
+
+pub fn encode_key_template(k: &ExamKey, t: &Template) -> String {
+    use base64_url::encode;
+    use snap::raw::Encoder;
+    if let Ok(serialized) = serde_cbor::to_vec(&(k, t)) {
+        let mut encoder = Encoder::new();
+        if let Ok(compressed) = encoder.compress_vec(&serialized) {
+            encode(&compressed)
+        } else {
+            "".into()
+        }
+    } else {
+        "".into()
+    }
+}
+
+pub fn decode_key_template(
+    encoded: &str,
+) -> Result<(ExamKey, Template), std::boxed::Box<dyn std::error::Error>> {
+    use base64_url::decode;
+    use snap::raw::Decoder;
+    let decoded = decode(encoded)?;
+    log::info!("decoded");
+
+    let mut decoder = Decoder::new();
+    let decompressed = decoder.decompress_vec(&decoded)?;
+
+    let (k, t): (ExamKey, Template) = serde_cbor::from_slice(&decompressed)?;
+
+    Ok((k, t))
 }

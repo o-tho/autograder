@@ -12,6 +12,7 @@ fn main() -> Result<(), ErrorWrapper> {
     use std::path::Path;
     let matches = Command::new("autograder")
         .about("automatically grade MCQ exams using optical mark recognition")
+        .subcommand(Command::new("test"))
         .subcommand(
             Command::new("report")
                 .about("Generate a report")
@@ -133,6 +134,13 @@ fn main() -> Result<(), ErrorWrapper> {
                 }
                 _ => println!("Unsupported file type: {:?}", imagefile),
             }
+        }
+        Some(("test", _sub_matches)) => {
+            println!("foo");
+            let t: Template =
+                serde_json::from_reader(std::fs::File::open("private/40qtemplate.json")?)?;
+            let outfile = std::fs::File::create("cbortest.cbor")?;
+            let _ = serde_cbor::to_writer(outfile, &t);
         }
         Some(("debug", sub_matches)) => {
             let templatepath = sub_matches
