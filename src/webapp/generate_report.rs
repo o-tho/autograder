@@ -76,17 +76,17 @@ fn raw_data_to_container(data: &Vec<u8>) -> Option<Box<dyn ImageContainer + '_>>
                 return Some(Box::new(container));
             }
             "image/png" => {
-                let image =
-                    image::load_from_memory_with_format(&clonedata, image::ImageFormat::Png)
-                        .unwrap();
-                let container = SingleImageContainer { image: image };
+                let container = SingleImageContainer::from_data_with_format(
+                    &clonedata,
+                    image::ImageFormat::Png,
+                );
                 return Some(Box::new(container));
             }
             "image/jpeg" => {
-                let image =
-                    image::load_from_memory_with_format(&clonedata, image::ImageFormat::Jpeg)
-                        .unwrap();
-                let container = SingleImageContainer { image: image };
+                let container = SingleImageContainer::from_data_with_format(
+                    &clonedata,
+                    image::ImageFormat::Jpeg,
+                );
                 return Some(Box::new(container));
             }
             _ => log::error!(

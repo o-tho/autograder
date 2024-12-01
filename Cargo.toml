@@ -9,8 +9,6 @@ image = {version = "0.25", default-features = false, features = [
       "jpeg",
       "png",
       "tiff",
-      "pnm",
-      "bmp"
 ]}
 nalgebra = "0.33.2"
 serde = {version = "1.0.214", features= ["derive"]}

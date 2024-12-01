@@ -1,6 +1,6 @@
 use crate::image_helpers::{binary_image_from_image, fax_to_grayimage};
 use crate::ErrorWrapper;
-use image::{DynamicImage, GrayImage};
+use image::{DynamicImage, GrayImage, ImageDecoder};
 
 use pdf::any::AnySync;
 use pdf::file::NoLog;
@@ -26,6 +26,25 @@ pub struct TiffContainer<R: std::io::BufRead + std::io::Seek> {
 
 pub struct SingleImageContainer {
     pub image: DynamicImage,
+}
+
+impl SingleImageContainer {
+    pub fn from_data_with_format(data: &[u8], format: image::ImageFormat) -> Self {
+        let reader = image::ImageReader::with_format(std::io::Cursor::new(data), format);
+        if let Ok(mut decoder) = reader.into_decoder() {
+            let orientation = decoder
+                .orientation()
+                .unwrap_or(image::metadata::Orientation::NoTransforms);
+
+            if let Ok(mut dynimage) = image::DynamicImage::from_decoder(decoder) {
+                dynimage.apply_orientation(orientation);
+
+                return SingleImageContainer { image: dynimage };
+            }
+        }
+
+        panic!("could not decode single image!");
+    }
 }
 
 pub trait ImageContainer {
