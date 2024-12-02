@@ -99,7 +99,7 @@ fn raw_data_to_container(data: &Vec<u8>) -> Option<Box<dyn ImageContainer + '_>>
 }
 
 impl GenerateReport {
-    fn simplified_update_view(&mut self, ctx: &Context) {
+    fn simplified_update_view(&mut self, ctx: &Context, width: f64, height: f64) {
         egui::CentralPanel::default().show(ctx, |ui| {
             upload_button(
                 ui,
@@ -133,6 +133,8 @@ impl GenerateReport {
                         report.sid.unwrap_or(0)
                     ));
                 }
+            } else if self.status.borrow().is_none() {
+                *self.status.borrow_mut() = Some("Only upload pictures that are roughly A4 with the whole visible area being covered by the bubble sheet.".into());
             }
 
             if let Some(status) = &*self.status.borrow() {
@@ -140,7 +142,11 @@ impl GenerateReport {
             }
             if let Some(texture) = &self.preview_texture {
                 egui::ScrollArea::both().show(ui, |ui| {
-                    ui.add(egui::Image::new(texture));
+                    ui.add(
+                        egui::Image::new(texture)
+                            .max_width(2.0 * width as f32)
+                            .max_height(3.0 * height as f32),
+                    );
                 });
             }
         });
@@ -354,7 +360,9 @@ impl eframe::App for GenerateReport {
         });
 
         match dimensions {
-            Ok((x, y)) if x < y => self.simplified_update_view(ctx),
+            Ok((x, y)) if x < y && self.template.is_some() && self.key.is_some() => {
+                self.simplified_update_view(ctx, x, y)
+            }
             _ => self.full_update_view(ctx),
         }
     }
