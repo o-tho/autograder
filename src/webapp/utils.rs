@@ -176,7 +176,6 @@ pub fn decode_key_template(
     use base64_url::decode;
     use snap::raw::Decoder;
     let decoded = decode(encoded)?;
-    log::info!("decoded");
 
     let mut decoder = Decoder::new();
     let decompressed = decoder.decompress_vec(&decoded)?;

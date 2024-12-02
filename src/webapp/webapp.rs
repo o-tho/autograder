@@ -48,7 +48,7 @@ impl eframe::App for WebApp {
     fn update(&mut self, ctx: &Context, frame: &mut eframe::Frame) {
         let location = web_sys::window().expect("huge websys error").location();
 
-        if !location.hash().unwrap().is_empty() {
+        if !location.hash().unwrap().is_empty() && self.generate_report.template.is_none() {
             let result = decode_key_template(&location.hash().unwrap().as_str()[1..]);
             if let Ok((key, template)) = result {
                 self.current_view = ViewType::GenerateReport;
