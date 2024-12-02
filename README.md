@@ -116,6 +116,24 @@ A green circle means that autograder thinks that the selected bubble is the
 circled one, which according to the key is correct. A red circle shows the
 correct answer, meaning that the selected bubble is elsewhere.
 
+### Using autograder from a mobile device
+
+If you only want to use autograder to grade a handful of bubble sheets, you can
+do it like this:
+
+First, on a device with a large display, navigate to *Create Magic Link*. Here
+you can upload a key and a template and autograder generates a _very_ long link.
+This link encodes all the template and key data and can be shared with anyone --
+most importantly yourself for usage on a mobile device. Bookmark that
+very long link with a descriptive name like "Stat101 Test 1" on your mobile device
+
+If you open the magic link on a mobile device, you will see (if the width of
+your screen is less than its height) a simplified interface, where you can
+upload individual pictures from your mobile device for instant grading.
+
+Please make sure that the image only shows the (complete) bubble sheet by
+cropping.
+
 ## Acknowledgements
 
 This project uses [typst](https://github.com/typst/typst) for typesetting and
