@@ -1,5 +1,4 @@
 use crate::image_helpers::{binary_image_from_image, fax_to_grayimage};
-use crate::ErrorWrapper;
 use image::{DynamicImage, GrayImage, ImageDecoder};
 
 use pdf::any::AnySync;
@@ -48,7 +47,7 @@ impl SingleImageContainer {
 }
 
 pub trait ImageContainer {
-    fn get_page(&mut self, n: usize) -> Result<GrayImage, ErrorWrapper>;
+    fn get_page(&mut self, n: usize) -> Result<GrayImage, std::boxed::Box<dyn std::error::Error>>;
 
     fn to_iter(&mut self) -> Box<dyn Iterator<Item = GrayImage> + '_> {
         let mut page = 0;
@@ -70,11 +69,11 @@ pub trait ImageContainer {
 }
 
 impl ImageContainer for SingleImageContainer {
-    fn get_page(&mut self, n: usize) -> Result<GrayImage, ErrorWrapper> {
+    fn get_page(&mut self, n: usize) -> Result<GrayImage, std::boxed::Box<dyn std::error::Error>> {
         if n == 0 {
             Ok(binary_image_from_image(self.image.clone()))
         } else {
-            Err(ErrorWrapper::IoError(std::io::Error::new(
+            Err(std::boxed::Box::new(std::io::Error::new(
                 std::io::ErrorKind::Other,
                 "Page out of range",
             )))
@@ -83,7 +82,7 @@ impl ImageContainer for SingleImageContainer {
 }
 
 impl<R: std::io::BufRead + std::io::Seek> ImageContainer for TiffContainer<R> {
-    fn get_page(&mut self, _n: usize) -> Result<GrayImage, ErrorWrapper> {
+    fn get_page(&mut self, _n: usize) -> Result<GrayImage, std::boxed::Box<dyn std::error::Error>> {
         unimplemented!();
     }
     fn to_iter(&mut self) -> Box<dyn Iterator<Item = GrayImage> + '_> {
@@ -127,7 +126,7 @@ impl<R: std::io::BufRead + std::io::Seek> ImageContainer for TiffContainer<R> {
 }
 
 impl ImageContainer for PdfContainer {
-    fn get_page(&mut self, n: usize) -> Result<GrayImage, ErrorWrapper> {
+    fn get_page(&mut self, n: usize) -> Result<GrayImage, std::boxed::Box<dyn std::error::Error>> {
         let file = &self.pdf_file;
         let resolver = file.resolver();
 
@@ -142,22 +141,21 @@ impl ImageContainer for PdfContainer {
 
         if let Some(img) = image {
             let (image_data, filter) = img.raw_image_data(&resolver).unwrap();
-            let grayimage: Result<GrayImage, ErrorWrapper> = match filter {
+            let grayimage: Result<GrayImage, std::boxed::Box<dyn std::error::Error>> = match filter
+            {
                 Some(pdf::enc::StreamFilter::DCTDecode(_)) => Ok(binary_image_from_image(
-                    image::load_from_memory_with_format(&image_data, image::ImageFormat::Jpeg)
-                        .map_err(ErrorWrapper::ImageError)?,
+                    image::load_from_memory_with_format(&image_data, image::ImageFormat::Jpeg)?,
                 )),
 
                 Some(pdf::enc::StreamFilter::FlateDecode(_)) => Ok(binary_image_from_image(
-                    image::load_from_memory_with_format(&image_data, image::ImageFormat::Png)
-                        .map_err(ErrorWrapper::ImageError)?,
+                    image::load_from_memory_with_format(&image_data, image::ImageFormat::Png)?,
                 )),
 
                 Some(pdf::enc::StreamFilter::CCITTFaxDecode(_)) => {
                     Ok(fax_to_grayimage(&image_data, img.width, img.height))
                 }
 
-                _ => Err(ErrorWrapper::ImageError(image::ImageError::Unsupported(
+                _ => Err(std::boxed::Box::new(image::ImageError::Unsupported(
                     image::error::UnsupportedError::from_format_and_kind(
                         image::error::ImageFormatHint::Unknown,
                         image::error::UnsupportedErrorKind::GenericFeature(
@@ -168,7 +166,7 @@ impl ImageContainer for PdfContainer {
             };
             grayimage
         } else {
-            Err(ErrorWrapper::IoError(std::io::Error::new(
+            Err(std::boxed::Box::new(std::io::Error::new(
                 std::io::ErrorKind::Other,
                 "Page has no image",
             )))

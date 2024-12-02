@@ -1,7 +1,6 @@
 #[cfg(not(target_arch = "wasm32"))]
-use autograder::ErrorWrapper;
 #[cfg(not(target_arch = "wasm32"))]
-fn main() -> Result<(), ErrorWrapper> {
+fn main() -> Result<(), std::boxed::Box<dyn std::error::Error>> {
     use autograder::debug_report;
     use autograder::generate_reports_for_image_container;
     use autograder::image_container::{PdfContainer, SingleImageContainer, TiffContainer};
@@ -104,35 +103,52 @@ fn main() -> Result<(), ErrorWrapper> {
             let keypath = sub_matches.get_one::<String>("key").unwrap().to_string();
             let imagespath = sub_matches.get_one::<String>("images").unwrap().to_string();
 
-            let t: Template = serde_json::from_reader(std::fs::File::open(templatepath)?)?;
-            let k: ExamKey = serde_json::from_reader(std::fs::File::open(keypath)?)?;
+            let t: Template = serde_json::from_reader(
+                std::fs::File::open(templatepath).expect("could not open template"),
+            )?;
+            let k: ExamKey =
+                serde_json::from_reader(std::fs::File::open(keypath).expect("could not open key"))?;
 
             let imagefile = Path::new(&imagespath);
+
+            let mut csv_report = String::new();
 
             match imagefile.extension().and_then(|ext| ext.to_str()) {
                 Some("pdf") => {
                     let file = pdf::file::FileOptions::cached().open(imagefile).unwrap();
                     let mut container = PdfContainer { pdf_file: file };
 
-                    generate_reports_for_image_container(&mut container, &t, &k, outpath)?
+                    csv_report =
+                        generate_reports_for_image_container(&mut container, &t, &k, outpath)
+                            .expect("error generating report");
+                    println!("{}", csv_report);
                 }
                 Some("tif") | Some("tiff") => {
-                    let buffer = std::io::BufReader::new(std::fs::File::open(imagefile)?);
+                    let buffer = std::io::BufReader::new(
+                        std::fs::File::open(imagefile).expect("could not open tif container"),
+                    );
 
                     let tiff = tiff::decoder::Decoder::new(buffer)?;
 
                     let mut container = TiffContainer { decoder: tiff };
 
-                    generate_reports_for_image_container(&mut container, &t, &k, outpath)?
+                    csv_report =
+                        generate_reports_for_image_container(&mut container, &t, &k, outpath)
+                            .expect("error while generating report");
                 }
                 Some("jpg") | Some("jpeg") | Some("png") => {
-                    let image = image::open(imagefile)?;
+                    let image = image::open(imagefile).expect("could not open single image");
 
                     let mut container = SingleImageContainer { image };
 
-                    generate_reports_for_image_container(&mut container, &t, &k, outpath)?
+                    let _ = generate_reports_for_image_container(&mut container, &t, &k, outpath)
+                        .expect("error while generating report");
                 }
                 _ => println!("Unsupported file type: {:?}", imagefile),
+            }
+
+            if !csv_report.is_empty() {
+                println!("{}", csv_report);
             }
         }
         Some(("debug", sub_matches)) => {

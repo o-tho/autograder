@@ -13,79 +13,24 @@ use crate::image_helpers::binary_image_from_image;
 
 use crate::scan::Scan;
 use template::{ExamKey, Template};
-use wasm_bindgen::prelude::*;
 
 use itertools::Itertools;
 use rayon::prelude::*;
 
-// missing error types
-use pdf::error::PdfError;
-use serde_json::Error as SerdeError;
-use tiff::TiffError;
-
-#[derive(Debug)]
-pub enum ErrorWrapper {
-    TiffError(TiffError),
-    PdfError(PdfError),
-    JsonError(SerdeError),
-    IoError(std::io::Error),
-    ImageError(image::ImageError),
-}
-
-impl From<image::ImageError> for ErrorWrapper {
-    fn from(error: image::ImageError) -> Self {
-        ErrorWrapper::ImageError(error)
-    }
-}
-impl From<TiffError> for ErrorWrapper {
-    fn from(error: TiffError) -> Self {
-        ErrorWrapper::TiffError(error)
-    }
-}
-impl From<PdfError> for ErrorWrapper {
-    fn from(error: PdfError) -> Self {
-        ErrorWrapper::PdfError(error)
-    }
-}
-
-impl From<SerdeError> for ErrorWrapper {
-    fn from(error: SerdeError) -> Self {
-        ErrorWrapper::JsonError(error)
-    }
-}
-
-impl From<std::io::Error> for ErrorWrapper {
-    fn from(error: std::io::Error) -> Self {
-        ErrorWrapper::IoError(error)
-    }
-}
-
-// Implement conversion from MyError to JsValue for Wasm compatibility
-impl From<ErrorWrapper> for JsValue {
-    fn from(error: ErrorWrapper) -> Self {
-        match error {
-            ErrorWrapper::PdfError(e) => JsValue::from_str(&format!("PDF Error: {:?}", e)),
-            ErrorWrapper::JsonError(e) => JsValue::from_str(&format!("JSON Error: {:?}", e)),
-            ErrorWrapper::TiffError(e) => JsValue::from_str(&format!("Tiff Error: {:?}", e)),
-            ErrorWrapper::IoError(e) => JsValue::from_str(&format!("I/O Error: {:?}", e)),
-            ErrorWrapper::ImageError(e) => JsValue::from_str(&format!("Image Error: {:?}", e)),
-        }
-    }
-}
 pub fn generate_reports_for_image_container(
     container: &mut dyn ImageContainer,
     template: &Template,
     key: &ExamKey,
     out_prefix: String,
-) -> Result<(), ErrorWrapper> {
+) -> Result<String, Box<dyn std::error::Error>> {
     let iterator = container.to_iter();
-
+    let mut records_buffer = Vec::new();
+    let records_mutex = std::sync::Mutex::new(&mut records_buffer);
     let mut turn = 0;
     let chunksize = 100;
 
     for chunk in &iterator.chunks(chunksize) {
         let images: Vec<image::GrayImage> = chunk.collect();
-
         images.par_iter().enumerate().for_each(|(idx, img)| {
             let mut scan = Scan {
                 img: img.clone(),
@@ -98,11 +43,24 @@ pub fn generate_reports_for_image_container(
                 &format!("page{}", idx + turn * chunksize),
             );
             report.save_to_file(&out_prefix);
+            let file_name = report.save_filename(&"".to_string());
+            let record = (file_name, report.sid, report.score);
+            if let Ok(mut records) = records_mutex.lock() {
+                records.push(record);
+            }
         });
         turn += 1;
     }
 
-    Ok(())
+    let mut csv_writer = csv::Writer::from_writer(std::io::Cursor::new(Vec::new()));
+    csv_writer.write_record(["Filename", "ID", "Score"])?;
+
+    for record in records_buffer {
+        csv_writer.serialize(record)?;
+    }
+
+    let csv_data = csv_writer.into_inner()?.into_inner();
+    Ok(String::from_utf8(csv_data)?)
 }
 
 pub fn debug_report(container: &SingleImageContainer, template: &Template) {
