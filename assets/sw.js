@@ -1,21 +1,17 @@
 var cacheName = 'autograder';
-var filesToCache = [
-  './',
-  './index.html',
-  './autograder.js',
-  './autograder_bg.wasm',
-];
 
-/* Start the service worker and cache all of the app's content */
-self.addEventListener('install', function (e) {
-  e.waitUntil(
-    caches.open(cacheName).then(function (cache) {
-      return cache.addAll(filesToCache);
-    })
-  );
+self.addEventListener('message', event => {
+  if (event.data.type === 'WASM_FILENAME') {
+    self.addEventListener('install', function (e) {
+      e.waitUntil(
+        caches.open(cacheName).then(function (cache) {
+          return cache.add('./' + event.data.filename);
+        })
+      );
+    });
+  }
 });
 
-/* Serve cached content when offline */
 self.addEventListener('fetch', function (e) {
   e.respondWith(
     caches.match(e.request).then(function (response) {
