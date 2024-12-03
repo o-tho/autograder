@@ -208,6 +208,7 @@ impl GenerateReport {
                             log::info!("Zhu Li! Do the thing!");
                             self.preview_texture = None;
                             self.preview_image = Rc::new(RefCell::new(None));
+                            self.zipped_results = Rc::new(RefCell::new(None));
                             let mut cloned_self = self.clone();
                             spawn_local(async move {
                                 cloned_self.generate_reports().await;
