@@ -64,11 +64,23 @@ pub fn generate_reports_for_image_container(
 }
 
 pub fn debug_report(container: &SingleImageContainer, template: &Template) {
+    use crate::point::Point;
     let mut scan = Scan {
         img: binary_image_from_image(container.image.clone()),
         transformation: None,
     };
     scan.transformation = scan.find_transformation(template);
+    let h_scale = (template.height as f64) / (scan.img.height() as f64);
+    let w_scale = (template.width as f64) / (scan.img.width() as f64);
+
+    let scale = (h_scale + w_scale) / 2.0;
+
+    let projected_centers = template.circle_centers.map(|p| Point {
+        x: (p.x as f64 / scale).round() as u32,
+        y: (p.y as f64 / scale).round() as u32,
+    });
+
+    println!("expecting centers at {:#?}", projected_centers);
 
     scan.debug_report(template);
 }

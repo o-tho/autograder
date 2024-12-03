@@ -158,6 +158,8 @@ impl Scan {
             None => std::boxed::Box::new(|p: Point| p) as std::boxed::Box<dyn Fn(Point) -> Point>,
         };
 
+        println!("Found centers at {:#?}", t.circle_centers.map(|p| trafo(p)));
+
         println!("Version at ({:#?}):", trafo(t.version.boxes[0].a));
 
         let blacknesses: Vec<u32> = t.version.blacknesses_rounded(self);
@@ -299,7 +301,7 @@ impl Scan {
 
         let located_centers: Option<Vec<Point>> = projected_centers
             .iter()
-            .map(|p| self.real_center(*p, projected_radius))
+            .map(|p| self.real_center_fuzzy(*p, projected_radius))
             .collect();
 
         match located_centers {
@@ -383,9 +385,10 @@ impl Scan {
         approx_radius: u32,
     ) -> Option<([Point; 3], u32)> {
         let max_radius = ((approx_radius as f64) * 1.05).round() as u32;
+
         let real_centers: Vec<Point> = approx_centers
             .iter()
-            .map(|p| self.real_center(*p, max_radius))
+            .map(|p| self.real_center_fuzzy(*p, max_radius))
             .collect::<Option<Vec<Point>>>()?;
 
         let real_radii: Vec<f64> = real_centers
@@ -406,6 +409,33 @@ impl Scan {
         ))
     }
 
+    pub fn is_circle_center(&self, center: Point, radius: u32) -> bool {
+        let directions: [(i32, i32); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
+
+        !directions.iter().any(|d| {
+            let x = center.x as i32 + d.0 * (5 * radius / 3) as i32;
+            let y = center.y as i32 + d.1 * (5 * radius / 3) as i32;
+
+            let p = Point {
+                x: x as u32,
+                y: y as u32,
+            };
+
+            self.blackness_around(p, radius / 5) < 0.6
+        })
+    }
+
+    pub fn real_center_fuzzy(&self, approx_center: Point, max_radius: u32) -> Option<Point> {
+        let fixes: [i32; 5] = [0, 1, -1, 2, -2];
+        let real_centers: Option<Point> = fixes.iter().find_map(|&fix| {
+            let p = approx_center;
+            let y = p.y as i32 + fix * max_radius as i32;
+            let y = y.max(0) as u32;
+            self.real_center(Point { x: p.x, y }, max_radius)
+        });
+        real_centers
+    }
+
     pub fn real_center(&self, approx_center: Point, max_radius: u32) -> Option<Point> {
         let a = Point {
             x: approx_center.x - max_radius / 4,
@@ -417,19 +447,33 @@ impl Scan {
         };
 
         if self.blackness(a, b) >= 0.4 {
-            // we actually are not inside the circle center but on the disc :(
+            // we actually are not inside the circle center but on the disc
             let points = self.find_white_spot_from_annulus(approx_center, max_radius);
             for p in points {
-                let res = find_inner_boundary_points(p, max_radius, &self.img, max_radius / 10);
+                let res = find_inner_boundary_points(p, max_radius, &self.img, max_radius / 4);
                 if let Some(points) = res {
-                    return find_circle(points[0], points[1], points[2]).map(|(p, _)| p);
+                    if let Some((center, radius)) = find_circle(points[0], points[1], points[2]) {
+                        return match self.is_circle_center(center, radius) {
+                            true => Some(center),
+                            false => None,
+                        };
+                    }
                 }
             }
             return None;
         }
 
         match find_inner_boundary_points(approx_center, max_radius, &self.img, max_radius / 10) {
-            Some(points) => find_circle(points[0], points[1], points[2]).map(|(p, _)| p),
+            Some(points) => {
+                if let Some((center, radius)) = find_circle(points[0], points[1], points[2]) {
+                    match self.is_circle_center(center, radius) {
+                        true => Some(center),
+                        false => None,
+                    }
+                } else {
+                    None
+                }
+            }
             None => None,
         }
     }

@@ -49,8 +49,4 @@ snap = "1.1.1"
 base64-url = "3.0.0"
 rfd = "0.15.0"
 
-[profile.release]
-lto = true
-panic = "abort"
-
 
