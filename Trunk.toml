@@ -1,2 +1,2 @@
 [watch]
-ignore = ["output/", "private/"]
+ignore = ["private/"]
