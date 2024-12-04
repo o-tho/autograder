@@ -252,8 +252,8 @@ impl Scan {
     pub fn blackness_around(&self, p: Point, r: u32) -> f64 {
         self.blackness(
             Point {
-                x: p.x - r,
-                y: p.y - r,
+                x: p.x.saturating_sub(r),
+                y: p.y.saturating_sub(r),
             },
             Point {
                 x: p.x + r,

@@ -16,7 +16,6 @@ use template::{ExamKey, Template};
 
 use itertools::Itertools;
 use rayon::prelude::*;
-
 pub fn generate_reports_for_image_container(
     container: &mut dyn ImageContainer,
     template: &Template,
@@ -24,41 +23,42 @@ pub fn generate_reports_for_image_container(
     out_prefix: String,
 ) -> Result<String, Box<dyn std::error::Error>> {
     let iterator = container.to_iter();
-    let mut records_buffer = Vec::new();
-    let records_mutex = std::sync::Mutex::new(&mut records_buffer);
-    let mut turn = 0;
+    let mut all_records = Vec::new();
     let chunksize = 100;
-
-    for chunk in &iterator.chunks(chunksize) {
+    for (turn, chunk) in iterator.chunks(chunksize).into_iter().enumerate() {
         let images: Vec<image::GrayImage> = chunk.collect();
-        images.par_iter().enumerate().for_each(|(idx, img)| {
-            let mut scan = Scan {
-                img: img.clone(),
-                transformation: None,
-            };
-            scan.transformation = scan.find_transformation(template);
-            let report = scan.generate_imagereport(
-                template,
-                key,
-                &format!("page{}", idx + turn * chunksize),
-            );
-            report.save_to_file(&out_prefix);
-            let file_name = report.save_filename(&"".to_string());
-            let record = (file_name, report.sid, report.score);
-            if let Ok(mut records) = records_mutex.lock() {
-                records.push(record);
-            }
-        });
-        turn += 1;
+
+        // Process each chunk in parallel and collect the results
+        let chunk_records: Vec<_> = images
+            .par_iter()
+            .enumerate()
+            .map(|(idx, img)| {
+                let mut scan = Scan {
+                    img: img.clone(),
+                    transformation: None,
+                };
+                scan.transformation = scan.find_transformation(template);
+                let report = scan.generate_imagereport(
+                    template,
+                    key,
+                    &format!("page{}", idx + turn * chunksize),
+                );
+                report.save_to_file(&out_prefix);
+                let file_name = report.save_filename(&"".to_string());
+                (file_name, report.sid, report.score)
+            })
+            .collect();
+
+        // Add this chunk's records to the main collection
+        all_records.extend(chunk_records);
     }
 
+    // Write all records to CSV
     let mut csv_writer = csv::Writer::from_writer(std::io::Cursor::new(Vec::new()));
     csv_writer.write_record(["Filename", "ID", "Score"])?;
-
-    for record in records_buffer {
+    for record in all_records {
         csv_writer.serialize(record)?;
     }
-
     let csv_data = csv_writer.into_inner()?.into_inner();
     Ok(String::from_utf8(csv_data)?)
 }

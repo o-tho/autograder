@@ -5,6 +5,56 @@ use image::{DynamicImage, GrayImage, ImageReader, Luma, RgbImage};
 use imageproc::drawing;
 use std::path::Path;
 
+fn kapur_level(img: &GrayImage) -> u8 {
+    let hist = imageproc::stats::histogram(img);
+    let histogram = &hist.channels[0]; // GrayImage has only one channel
+
+    let total_pixels = (img.width() * img.height()) as f64;
+
+    let mut cumulative_sum = [0.0f64; 257];
+    let mut cumulative_entropy = [0.0f64; 257];
+
+    for i in 0..256 {
+        let p = histogram[i] as f64 / total_pixels;
+        let entropy = if p > 0.0 { -p * p.ln() } else { 0.0 };
+        cumulative_sum[i + 1] = cumulative_sum[i] + p;
+        cumulative_entropy[i + 1] = cumulative_entropy[i] + entropy;
+    }
+
+    let mut max_entropy = f64::NEG_INFINITY;
+    let mut optimal_threshold = 0;
+
+    for threshold in 1..255 {
+        let background_sum = cumulative_sum[threshold + 1];
+        let foreground_sum = cumulative_sum[256] - background_sum;
+
+        if background_sum < f64::EPSILON || foreground_sum < f64::EPSILON {
+            continue;
+        }
+
+        let background_entropy = if background_sum > 0.0 {
+            cumulative_entropy[threshold + 1] / background_sum
+        } else {
+            0.0
+        };
+
+        let foreground_entropy = if foreground_sum > 0.0 {
+            (cumulative_entropy[256] - cumulative_entropy[threshold + 1]) / foreground_sum
+        } else {
+            0.0
+        };
+
+        let total_entropy = background_entropy + foreground_entropy;
+
+        if total_entropy > max_entropy {
+            max_entropy = total_entropy;
+            optimal_threshold = threshold;
+        }
+    }
+
+    optimal_threshold as u8
+}
+
 pub fn fax_to_grayimage(data: &[u8], width: u32, height: u32) -> GrayImage {
     let mut result = GrayImage::new(width, height);
     let mut y = 0;
@@ -23,7 +73,7 @@ pub fn fax_to_grayimage(data: &[u8], width: u32, height: u32) -> GrayImage {
 }
 pub fn binary_image_from_image(img: DynamicImage) -> GrayImage {
     let res = img.into_luma8();
-    let threshold = imageproc::contrast::otsu_level(&res);
+    let threshold = kapur_level(&res);
 
     imageproc::contrast::threshold(&res, threshold, imageproc::contrast::ThresholdType::Binary)
 }
