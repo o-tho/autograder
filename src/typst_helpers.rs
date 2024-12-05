@@ -49,7 +49,7 @@ fn extract_bubbles(frame: &Frame) -> Vec<BubbleInfo> {
                 }
             }
             FrameItem::Group(group) => {
-                process_group(&group, pos, &mut bubbles);
+                process_group(group, pos, &mut bubbles);
             }
             _ => {}
         }
@@ -110,7 +110,7 @@ fn process_group(group: &GroupItem, parent_pos: &TypstPoint, bubbles: &mut Vec<B
 
 fn parse_bubble_type(id: &str) -> Option<BubbleType> {
     let parts: Vec<&str> = id.split('-').collect();
-    match *(parts.get(0)?) {
+    match *(parts.first()?) {
         "mcq" => Some(BubbleType::Mcq {
             question: parts[1].parse().ok()?,
             option: parts[2].to_string(),
@@ -215,9 +215,9 @@ pub fn typst_frame_to_template(frame: &typst::layout::Frame, scale: f64) -> Temp
 
     // Convert to vectors and sort by question number
     let mut mcq_questions: Vec<Question> = mcq_questions.into_values().collect();
-    mcq_questions.sort_by_key(|q| q.id.clone());
+    mcq_questions.sort_by_key(|q| q.boxes.first().unwrap().a.y);
     let mut id_questions: Vec<Question> = id_questions.into_values().collect();
-    id_questions.sort_by_key(|q| q.id.clone());
+    id_questions.sort_by_key(|q| q.boxes.first().unwrap().a.y);
 
     Template {
         id_questions,
