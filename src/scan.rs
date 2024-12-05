@@ -1,4 +1,4 @@
-use crate::image_helpers::{draw_circle_around_box, gray_to_rgb};
+use crate::image_helpers::{draw_circle_around_box, draw_rectangle_around_box, gray_to_rgb};
 use crate::point::{affine_transformation, find_circle, Point, Transformation};
 use crate::report::ImageReport;
 use crate::template::{ExamKey, Template};
@@ -8,6 +8,7 @@ use std::cmp::{max, min};
 
 const RED: image::Rgb<u8> = image::Rgb([255u8, 0u8, 0u8]);
 const GREEN: image::Rgb<u8> = image::Rgb([0u8, 255u8, 0u8]);
+const ORANGE: image::Rgb<u8> = image::Rgb([255u8, 140u8, 0u8]);
 
 #[derive(Debug, Clone)]
 pub struct Scan {
@@ -158,7 +159,7 @@ impl Scan {
             None => std::boxed::Box::new(|p: Point| p) as std::boxed::Box<dyn Fn(Point) -> Point>,
         };
 
-        println!("Found centers at {:#?}", t.circle_centers.map(|p| trafo(p)));
+        println!("Found centers at {:#?}", t.circle_centers.map(&trafo));
 
         println!("Version at ({:#?}):", trafo(t.version.boxes[0].a));
 
@@ -180,7 +181,7 @@ impl Scan {
                 "Q{:0>2}: {:?} -> {:?}",
                 idx + 1,
                 blacknesses,
-                q.choice(self)
+                q.choices(self)
             );
         }
     }
@@ -213,30 +214,54 @@ impl Scan {
             for i in 0..t.questions.len() {
                 let q = &t.questions[i];
                 let correct = k[v as usize][i] as usize;
-                let color = match q.choice(self) {
-                    Some(answer) => {
-                        if answer as usize == correct {
+                let choices = q.choices(self);
+                let correct_box_a = trafo(q.boxes[correct].a);
+                let correct_box_b = trafo(q.boxes[correct].b);
+                match choices.len() {
+                    0 => {
+                        draw_circle_around_box(&mut image, correct_box_a, correct_box_b, RED);
+                    }
+                    1 => {
+                        let color = if choices[0] as usize == correct {
                             score += 1;
                             GREEN
                         } else {
                             RED
-                        }
+                        };
+                        draw_circle_around_box(&mut image, correct_box_a, correct_box_b, color);
                     }
-                    None => RED,
-                };
-                let tl = trafo(q.boxes[correct].a);
-                let br = trafo(q.boxes[correct].b);
-
-                draw_circle_around_box(&mut image, tl, br, color);
+                    _ => {
+                        draw_circle_around_box(&mut image, correct_box_a, correct_box_b, RED);
+                        draw_rectangle_around_box(
+                            &mut image,
+                            trafo(q.boxes.first().unwrap().a),
+                            trafo(q.boxes.last().unwrap().b),
+                            ORANGE,
+                        );
+                    }
+                }
             }
         }
 
         for i in 0..t.id_questions.len() {
             let q = &t.id_questions[i];
-            if let Some(idx) = q.choice(self) {
-                let tl = trafo(q.boxes[idx as usize].a);
-                let br = trafo(q.boxes[idx as usize].b);
-                draw_circle_around_box(&mut image, tl, br, GREEN);
+            let choices = q.choices(self);
+            match choices.len() {
+                1 => {
+                    let idx = choices[0];
+                    let tl = trafo(q.boxes[idx as usize].a);
+                    let br = trafo(q.boxes[idx as usize].b);
+                    draw_circle_around_box(&mut image, tl, br, GREEN);
+                }
+                n if n > 1 => {
+                    draw_rectangle_around_box(
+                        &mut image,
+                        trafo(q.boxes[0].a),
+                        trafo(q.boxes.last().unwrap().b),
+                        ORANGE,
+                    );
+                }
+                _ => {}
             }
         }
 
@@ -263,27 +288,47 @@ impl Scan {
     }
     pub fn blackness(&self, p1: Point, p2: Point) -> f64 {
         let mut dark_pixels = 0;
+        let mut total_pixels = 0;
 
         let x_min = min(p1.x, p2.x);
         let x_max = max(p1.x, p2.x);
         let y_min = min(p1.y, p2.y);
         let y_max = max(p1.y, p2.y);
-        let mut total = (x_max - x_min) * (y_max - y_min);
+
+        // Calculate ellipse center and radii
+        let center_x = (x_min + x_max) as f64 / 2.0;
+        let center_y = (y_min + y_max) as f64 / 2.0;
+        let a = (x_max - x_min) as f64 / 2.0; // semi-major axis
+        let b = (y_max - y_min) as f64 / 2.0; // semi-minor axis
+
         let (w, h) = self.img.dimensions();
+
         for x in x_min..x_max {
             for y in y_min..y_max {
-                if x < w && y < h {
-                    let pixel = self.img.get_pixel(x, y);
-                    if is_dark(pixel) {
-                        dark_pixels += 1;
+                // Check if point (x,y) lies within the ellipse using the equation:
+                // ((x-h)²/a²) + ((y-k)²/b²) ≤ 1
+                // where (h,k) is the center point
+                let normalized_x = (x as f64 - center_x) / a;
+                let normalized_y = (y as f64 - center_y) / b;
+                let in_ellipse = (normalized_x * normalized_x + normalized_y * normalized_y) <= 1.0;
+
+                if in_ellipse {
+                    if x < w && y < h {
+                        let pixel = self.img.get_pixel(x, y);
+                        if is_dark(pixel) {
+                            dark_pixels += 1;
+                        }
+                        total_pixels += 1;
                     }
-                } else {
-                    total -= 1;
                 }
             }
         }
 
-        (dark_pixels as f64) / (total as f64)
+        if total_pixels == 0 {
+            0.0
+        } else {
+            (dark_pixels as f64) / (total_pixels as f64)
+        }
     }
 
     pub fn find_transformation(&self, t: &Template) -> Option<Transformation> {
@@ -321,8 +366,8 @@ impl Scan {
         let mut points = Vec::new();
 
         let topleft = Point {
-            x: start.x - 4 * inner_radius / 3,
-            y: start.y - 4 * inner_radius / 3,
+            x: start.x.saturating_sub(4 * inner_radius / 3),
+            y: start.y.saturating_sub(4 * inner_radius / 3),
         };
         let botright = Point {
             x: start.x + 4 * inner_radius / 3,

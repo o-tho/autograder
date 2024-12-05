@@ -101,6 +101,6 @@ rowspan: 5,
   [ID\#], [0], [1], [2], [3], [4], [5],[6],[7],[8],[9],
   ..id_rows
 )], 
-[#v(1cm)If you make a mistake, do *NOT* mark it with X. Instead, use blanco or ask for a new bubble sheet.],
+[#v(1cm)If you make a mistake, do *NOT* mark it with X or use an eraser. Instead, use blanco or ask for a new bubble sheet.],
 grid.cell(align: right, [#v(1fr) #annulus])
 )

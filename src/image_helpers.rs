@@ -5,56 +5,63 @@ use image::{DynamicImage, GrayImage, ImageReader, Luma, RgbImage};
 use imageproc::drawing;
 use std::path::Path;
 
+/// This is the computation of the Kapur level using equ. (18) in
+/// [the original article].
+/// [the original article]: https://doi.org/10.1016/0734-189X(85)90125-2
 fn kapur_level(img: &GrayImage) -> u8 {
     let hist = imageproc::stats::histogram(img);
     let histogram = &hist.channels[0]; // GrayImage has only one channel
 
     let total_pixels = (img.width() * img.height()) as f64;
 
-    let mut cumulative_sum = [0.0f64; 257];
-    let mut cumulative_entropy = [0.0f64; 257];
-
-    for i in 0..256 {
-        let p = histogram[i] as f64 / total_pixels;
-        let entropy = if p > 0.0 { -p * p.ln() } else { 0.0 };
-        cumulative_sum[i + 1] = cumulative_sum[i] + p;
-        cumulative_entropy[i + 1] = cumulative_entropy[i] + entropy;
+    // The p_i in the article. They describe the probability of encountering
+    // gray-level i.
+    let mut p = [0.0f64; 256];
+    for i in 0..=255 {
+        p[i] = histogram[i] as f64 / total_pixels;
     }
 
-    let mut max_entropy = f64::NEG_INFINITY;
-    let mut optimal_threshold = 0;
+    // The P_s in the article, which is the probability of encountering
+    // gray-level <= s.
+    let mut cum_p = [0.0f64; 256];
+    cum_p[0] = p[0];
+    for i in 1..=255 {
+        cum_p[i] = cum_p[i - 1] + p[i];
+    }
 
-    for threshold in 1..255 {
-        let background_sum = cumulative_sum[threshold + 1];
-        let foreground_sum = cumulative_sum[256] - background_sum;
-
-        if background_sum < f64::EPSILON || foreground_sum < f64::EPSILON {
-            continue;
-        }
-
-        let background_entropy = if background_sum > 0.0 {
-            cumulative_entropy[threshold + 1] / background_sum
+    // The H_s in the article. These are the entropies attached to the
+    // distributions p[0],...,p[s].
+    let mut h = [0.0f64; 256];
+    if p[0] > f64::EPSILON {
+        h[0] = -p[0] * p[0].ln();
+    }
+    for s in 1..=255 {
+        if p[s] > f64::EPSILON {
+            h[s] = h[s - 1] - p[s] * p[s].ln();
         } else {
-            0.0
-        };
-
-        let foreground_entropy = if foreground_sum > 0.0 {
-            (cumulative_entropy[256] - cumulative_entropy[threshold + 1]) / foreground_sum
-        } else {
-            0.0
-        };
-
-        let total_entropy = background_entropy + foreground_entropy;
-
-        if total_entropy > max_entropy {
-            max_entropy = total_entropy;
-            optimal_threshold = threshold;
+            h[s] = h[s - 1]
         }
     }
 
-    optimal_threshold as u8
+    let mut max_entropy = f64::MIN;
+    let mut best_threshold = usize::MIN;
+
+    for s in 0..=255 {
+        // psi_s is the total entropy of foreground and background at threshold
+        // level s. Instead of computing them separately, equation (18) in the
+        // article, which simplifies this to this:
+        let psi_s = (cum_p[s] * (1.0 - cum_p[s])).ln()
+            + h[s] / cum_p[s]
+            + (h[255] - h[s]) / (1.0 - cum_p[s]);
+
+        if psi_s > max_entropy {
+            max_entropy = psi_s;
+            best_threshold = s;
+        }
+    }
+
+    best_threshold as u8
 }
-
 pub fn fax_to_grayimage(data: &[u8], width: u32, height: u32) -> GrayImage {
     let mut result = GrayImage::new(width, height);
     let mut y = 0;
@@ -97,6 +104,28 @@ pub fn gray_to_rgb(gray_image: &GrayImage) -> RgbImage {
     }
 
     rgb_image
+}
+
+pub fn draw_rectangle_around_box(
+    img: &mut RgbImage,
+    topleft: Point,
+    botright: Point,
+    color: image::Rgb<u8>,
+) {
+    let strength = 4;
+    let x = topleft.x as i32;
+    let y = topleft.y as i32;
+    let size_x = botright.x - topleft.x;
+    let size_y = botright.y - topleft.y;
+
+    for i in 0..strength {
+        drawing::draw_hollow_rect_mut(
+            img,
+            imageproc::rect::Rect::at(x - i, y - i)
+                .of_size(size_x + 2 * i as u32, size_y + 2 * i as u32),
+            color,
+        );
+    }
 }
 
 pub fn draw_circle_around_box(

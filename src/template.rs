@@ -62,16 +62,13 @@ impl Question {
             .map(|b| (b * 100.0).round() as u32)
             .collect()
     }
-    pub fn choice(&self, scan: &Scan) -> Option<u32> {
+    pub fn choices(&self, scan: &Scan) -> Vec<u32> {
+        let mut choices = Vec::new();
         let blackness: Vec<f64> = self
             .blacknesses(scan)
             .iter()
             .map(|&v| if v.is_nan() { 0.0 } else { v })
             .collect();
-
-        if blackness.len() < 2 {
-            return None;
-        }
 
         let (min, max) = blackness
             .iter()
@@ -80,18 +77,25 @@ impl Question {
                 (min.min(v), max.max(v))
             });
 
-        if let Some(max_index) = blackness.iter().position(|&v| v == max) {
-            let second_highest = blackness
-                .iter()
-                .copied()
-                .filter(|&v| v != max)
-                .max_by(|a, b| a.partial_cmp(b).unwrap())?;
+        let beta = 0.6;
+        let threshold = min + beta * (max - min);
 
-            if max > second_highest + min * 0.4 {
-                return Some(self.boxes[max_index].value);
+        // Find all boxes above threshold
+        for (index, &value) in blackness.iter().enumerate() {
+            if value > threshold && max > 0.45 {
+                choices.push(self.boxes[index].value);
             }
         }
-        None
+
+        choices
+    }
+    pub fn choice(&self, scan: &Scan) -> Option<u32> {
+        let choices = self.choices(scan);
+        if choices.len() == 1 {
+            Some(choices[0])
+        } else {
+            None
+        }
     }
 }
 

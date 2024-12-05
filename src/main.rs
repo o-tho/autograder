@@ -164,9 +164,9 @@ fn main() -> Result<(), std::boxed::Box<dyn std::error::Error>> {
             let imagefile = Path::new(&imagepath);
             let image = image::open(imagefile)?;
 
-            let mut container = SingleImageContainer { image };
+            let container = SingleImageContainer { image };
 
-            debug_report(&mut container, &t);
+            debug_report(&container, &t);
         }
         Some(("form", sub_matches)) => {
             let qs = sub_matches.get_one::<u32>("qs").expect("required by clap");
