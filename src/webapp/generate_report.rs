@@ -104,7 +104,7 @@ impl GenerateReport {
             upload_button(
                 ui,
                 &ctx,
-                "📂 Upload Image",
+                "📂 Open Image",
                 FileType::Container,
                 self.data_channel.0.clone(),
             );
@@ -134,7 +134,7 @@ impl GenerateReport {
                     ));
                 }
             } else if self.status.borrow().is_none() {
-                *self.status.borrow_mut() = Some("Only upload pictures that are roughly A4 with the whole visible area being covered by the bubble sheet.".into());
+                *self.status.borrow_mut() = Some("Only use pictures that are roughly A4 with the whole visible area being covered by the bubble sheet.".into());
             }
 
             if let Some(status) = &*self.status.borrow() {
@@ -159,7 +159,7 @@ impl GenerateReport {
                         upload_button(
                             ui,
                             &ctx,
-                            "📂 Upload Template",
+                            "📂 Open Template",
                             FileType::Template,
                             self.data_channel.0.clone(),
                         );
@@ -167,14 +167,14 @@ impl GenerateReport {
                             ui.label("🎉");
                         }
                     });
-                    ui.label("Upload a template file (.json).");
+                    ui.label("Open a template file (.json).");
                 });
                 columns[1].vertical(|ui| {
                     ui.horizontal(|ui| {
                         upload_button(
                             ui,
                             &ctx,
-                            "📂 Upload Exam Key",
+                            "📂 Open Exam Key",
                             FileType::Key,
                             self.data_channel.0.clone(),
                         );
@@ -182,14 +182,14 @@ impl GenerateReport {
                             ui.label("👍");
                         }
                     });
-                    ui.label("Upload an exam key (.json).");
+                    ui.label("Open an exam key (.json).");
                 });
                 columns[2].vertical(|ui| {
                     ui.horizontal(|ui| {
                         upload_button(
                             ui,
                             &ctx,
-                            "📂 Upload Container",
+                            "📂 Open Container",
                             FileType::Container,
                             self.data_channel.0.clone(),
                         );
@@ -197,7 +197,7 @@ impl GenerateReport {
                             ui.label("❤");
                         }
                     });
-                    ui.label("Upload an image container (.pdf, .tiff, .jpg, .png)");
+                    ui.label("Open an image container (.pdf, .tiff, .jpg, .png)");
                 });
                 columns[3].vertical(|ui| {
                     if self.template.is_some()

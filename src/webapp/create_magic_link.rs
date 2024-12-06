@@ -40,12 +40,12 @@ impl CreateMagicLink {
 impl CreateMagicLink {
     pub fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
         eframe::egui::CentralPanel::default().show(ctx, |ui| {
-            ui.label("A ✨magic link✨ allows you to share a template and an exam key together as a single link. This is great if you want to use autograder for specific exams and have to potentially re-grade many exams without having to upload the template and key file each time. Best to bookmark!");
+            ui.label("A ✨magic link✨ allows you to share a template and an exam key together as a single link. This is great if you want to use autograder for specific exams and have to potentially re-grade many exams without having to open the template and key file each time. Best to bookmark!");
             ui.horizontal(|ui| {
                 upload_button(
                     ui,
                     &ctx,
-                    "📂 Upload Template",
+                    "📂 Open Template",
                     FileType::Template,
                     self.data_channel.0.clone(),
                 );
@@ -58,7 +58,7 @@ impl CreateMagicLink {
                 upload_button(
                     ui,
                     &ctx,
-                    "📂 Upload Exam Key",
+                    "📂 Open Exam Key",
                     FileType::Key,
                     self.data_channel.0.clone(),
                 );

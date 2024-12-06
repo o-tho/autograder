@@ -7,6 +7,7 @@ pub struct ImageReport {
     pub image: RgbImage,
     pub sid: Option<u32>,
     pub version: Option<u32>,
+    pub issue: bool,
     pub score: u32,
     pub identifier: String,
 }
@@ -14,6 +15,10 @@ pub struct ImageReport {
 impl ImageReport {
     pub fn save_filename(&self, prefix: &String) -> String {
         let mut filename: String = "".to_string();
+
+        if self.issue {
+            filename += "GRADE_BY_HAND-";
+        }
         if let Some(id) = self.sid {
             filename += &format!("{}-", id);
         } else {

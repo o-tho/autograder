@@ -194,6 +194,7 @@ impl Scan {
     ) -> ImageReport {
         let mut image = gray_to_rgb(&self.img);
         let mut score = 0;
+        let mut issue = false;
 
         let trafo = match self.transformation {
             Some(tr) => std::boxed::Box::new(move |p: Point| tr.apply(p))
@@ -238,14 +239,34 @@ impl Scan {
                             trafo(q.boxes.last().unwrap().b),
                             ORANGE,
                         );
+                        issue = true;
                     }
                 }
             }
         }
 
+        let mut last_valid_id_pos = None;
         for i in 0..t.id_questions.len() {
             let q = &t.id_questions[i];
             let choices = q.choices(self);
+
+            if !choices.is_empty() {
+                // If we found a previous valid position and there's a gap
+                if let Some(last_pos) = last_valid_id_pos {
+                    if i - last_pos > 1 {
+                        issue = true;
+                        let prev_question = &t.id_questions[i - 1];
+                        draw_rectangle_around_box(
+                            &mut image,
+                            trafo(prev_question.boxes[0].a),
+                            trafo(prev_question.boxes.last().unwrap().b),
+                            ORANGE,
+                        );
+                    }
+                }
+                last_valid_id_pos = Some(i);
+            }
+
             match choices.len() {
                 1 => {
                     let idx = choices[0];
@@ -260,6 +281,7 @@ impl Scan {
                         trafo(q.boxes.last().unwrap().b),
                         ORANGE,
                     );
+                    issue = true;
                 }
                 _ => {}
             }
@@ -270,6 +292,7 @@ impl Scan {
             sid: self.id(t),
             version: t.version.choice(self),
             score,
+            issue,
             identifier: identifier.to_string(),
         }
     }

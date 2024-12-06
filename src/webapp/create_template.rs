@@ -97,11 +97,11 @@ impl CreateTemplate {
                     ui.heading("Template Settings");
 
                     ui.group(|ui| {
-                        ui.label("Upload the template image (NOT pdf)");
+                        ui.label("Open the template image (NOT pdf)");
                         upload_button(
                             ui,
                             &ctx,
-                            "📂 Upload image of template",
+                            "📂 Open image of template",
                             FileType::TemplateImage,
                             self.data_channel.0.clone(),
                         );
