@@ -1,3 +1,4 @@
+use crate::webapp::webapp::StateView;
 use eframe::egui::{Context, ScrollArea};
 use eframe::Frame;
 use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
@@ -29,8 +30,8 @@ fn prepare_markdown_content(content: &str) -> String {
     modified
 }
 
-impl Help {
-    pub fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
+impl StateView for Help {
+    fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
         eframe::egui::CentralPanel::default().show(ctx, |ui| {
             ScrollArea::vertical().show(ui, |ui| {
                 let mut cache = CommonMarkCache::default();

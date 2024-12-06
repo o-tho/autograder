@@ -5,6 +5,7 @@ use crate::template::Template;
 use crate::webapp::utils::{
     download_button, template_from_settings, upload_button, FileType, QuestionSettings,
 };
+use crate::webapp::webapp::StateView;
 use eframe::egui::{CentralPanel, Context, ScrollArea, SidePanel, TextEdit, Ui};
 use eframe::Frame;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
@@ -16,6 +17,7 @@ pub struct CreateTemplate {
     circle_settings: CircleSettings,
     preview_texture: Option<egui::TextureHandle>,
     original_image: Option<image::DynamicImage>,
+    template: Option<Template>,
     data_channel: (Sender<(FileType, Vec<u8>)>, Receiver<(FileType, Vec<u8>)>),
 }
 
@@ -29,6 +31,7 @@ impl Default for CreateTemplate {
             circle_settings: CircleSettings::default(),
             preview_texture: None,
             original_image: None,
+            template: None,
             data_channel: (sender, receiver),
         }
     }
@@ -69,26 +72,12 @@ fn text_box_pair_with_label(ui: &mut Ui, label: &str, x_value: &mut u32, y_value
     });
 }
 
-impl CreateTemplate {
-    pub fn update_texture(&mut self, ui: &mut Ui, image: &image::DynamicImage) {
-        let rgb = image.clone().into_rgb8();
-        let eguicolor = rgb_to_egui_color_image(&rgb);
-        self.preview_texture = Some(ui.ctx().load_texture(
-            "displayed_image",
-            eguicolor,
-            egui::TextureOptions::default(),
-        ));
+impl StateView for CreateTemplate {
+    fn get_template(&self) -> Option<&Template> {
+        self.template.as_ref()
     }
 
-    pub fn to_template(&self) -> Template {
-        template_from_settings(
-            &self.question_settings,
-            &self.layout_settings,
-            &self.position_settings,
-            &self.circle_settings,
-        )
-    }
-    pub fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
+    fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
         SidePanel::left("controls_panel")
             .resizable(true)
             .min_width(ctx.screen_rect().width() * 0.25) // Set to 30% of the screen width
@@ -226,6 +215,7 @@ impl CreateTemplate {
 
                             let result = scan.circle_everything(&template);
                             let dynamic_image = image::DynamicImage::ImageRgb8(result);
+                            self.template = Some(template);
                             self.update_texture(ui, &dynamic_image);
                         }
                         download_button(
@@ -265,6 +255,25 @@ impl CreateTemplate {
                 }
             }
         });
+    }
+}
+impl CreateTemplate {
+    fn update_texture(&mut self, ui: &mut Ui, image: &image::DynamicImage) {
+        let rgb = image.clone().into_rgb8();
+        let eguicolor = rgb_to_egui_color_image(&rgb);
+        self.preview_texture = Some(ui.ctx().load_texture(
+            "displayed_image",
+            eguicolor,
+            egui::TextureOptions::default(),
+        ));
+    }
+    pub fn to_template(&self) -> Template {
+        template_from_settings(
+            &self.question_settings,
+            &self.layout_settings,
+            &self.position_settings,
+            &self.circle_settings,
+        )
     }
 }
 pub struct LayoutSettings {

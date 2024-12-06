@@ -3,6 +3,7 @@ use crate::scan::Scan;
 use crate::template::Template;
 use crate::typst_helpers::{typst_frame_to_template, TypstWrapper};
 use crate::webapp::utils::{download_button, QuestionSettings};
+use crate::webapp::webapp::StateView;
 use eframe::egui::{Context, ScrollArea};
 use eframe::Frame;
 
@@ -26,8 +27,11 @@ impl Default for CreateForm {
     }
 }
 
-impl CreateForm {
-    pub fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
+impl StateView for CreateForm {
+    fn get_template(&self) -> Option<&Template> {
+        self.template.as_ref()
+    }
+    fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
         eframe::egui::SidePanel::left("settings_panel")
             .resizable(false)
             .default_width(200.0)

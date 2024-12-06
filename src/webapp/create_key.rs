@@ -1,12 +1,13 @@
 use crate::template::ExamKey;
 use crate::webapp::utils::download_button;
+use crate::webapp::webapp::StateView;
 use eframe::egui::{Context, Slider, TextEdit};
 use eframe::Frame;
 
 pub struct CreateKey {
     number_of_versions: usize,
     inputs: Vec<String>,
-    result: ExamKey,
+    key: ExamKey,
 }
 
 impl Default for CreateKey {
@@ -14,7 +15,7 @@ impl Default for CreateKey {
         Self {
             number_of_versions: 4,
             inputs: vec![String::new(); 4], // Start with 4 empty strings
-            result: Vec::new(),
+            key: Vec::new(),
         }
     }
 }
@@ -33,8 +34,32 @@ fn convert_to_vector(input: &str) -> Vec<u32> {
         .collect()
 }
 
-impl CreateKey {
-    pub fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
+fn convert_to_string(input: &Vec<u32>) -> String {
+    input
+        .iter()
+        .map(|&num| char::from(b'A' + (num as u8)))
+        .collect()
+}
+
+impl StateView for CreateKey {
+    fn get_key(&self) -> Option<&ExamKey> {
+        if self.key.len() > 0 {
+            Some(self.key.as_ref())
+        } else {
+            None
+        }
+    }
+
+    fn set_key(&mut self, key: Option<ExamKey>) {
+        if let Some(vec) = key {
+            self.number_of_versions = vec.len();
+            self.inputs = vec.iter().map(&convert_to_string).collect();
+            self.key = vec;
+        } else {
+            self.key = vec![];
+        }
+    }
+    fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
         eframe::egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Create Key");
 
@@ -60,7 +85,7 @@ impl CreateKey {
                     ui.label(format!("({} answers)", self.inputs[i].len()));
                 });
             }
-            self.result = self
+            self.key = self
                 .inputs
                 .iter()
                 .map(|input| convert_to_vector(input))
@@ -70,7 +95,7 @@ impl CreateKey {
             download_button(
                 ui,
                 "💾 Save Key as json",
-                serde_json::to_vec(&self.result).unwrap(),
+                serde_json::to_vec(&self.key).unwrap(),
             );
         });
     }

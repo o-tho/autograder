@@ -1,5 +1,6 @@
 use crate::template::{ExamKey, Template};
 use crate::webapp::utils::{encode_key_template, upload_button, FileType};
+use crate::webapp::webapp::StateView;
 use eframe::egui::{Context, ScrollArea};
 use eframe::Frame;
 
@@ -37,8 +38,23 @@ impl CreateMagicLink {
     }
 }
 
-impl CreateMagicLink {
-    pub fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
+impl StateView for CreateMagicLink {
+    fn get_key(&self) -> Option<&ExamKey> {
+        self.key.as_ref()
+    }
+
+    fn get_template(&self) -> Option<&Template> {
+        self.template.as_ref()
+    }
+
+    fn set_key(&mut self, key: Option<ExamKey>) {
+        self.key = key;
+    }
+
+    fn set_template(&mut self, template: Option<Template>) {
+        self.template = template;
+    }
+    fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
         eframe::egui::CentralPanel::default().show(ctx, |ui| {
             ui.label("A ✨magic link✨ allows you to share a template and an exam key together as a single link. This is great if you want to use autograder for specific exams and have to potentially re-grade many exams without having to open the template and key file each time. Best to bookmark!");
             ui.horizontal(|ui| {

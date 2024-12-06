@@ -4,6 +4,7 @@ use crate::report::ImageReport;
 use crate::scan::Scan;
 use crate::template::{ExamKey, Template};
 use crate::webapp::utils::{download_button, upload_button, FileType};
+use crate::webapp::webapp::StateView;
 use egui::Context;
 use infer;
 use itertools::Itertools;
@@ -317,7 +318,23 @@ impl GenerateReport {
     }
 }
 
-impl eframe::App for GenerateReport {
+impl StateView for GenerateReport {
+    fn get_key(&self) -> Option<&ExamKey> {
+        self.key.as_ref()
+    }
+
+    fn get_template(&self) -> Option<&Template> {
+        self.template.as_ref()
+    }
+
+    fn set_key(&mut self, key: Option<ExamKey>) {
+        self.key = key;
+    }
+
+    fn set_template(&mut self, template: Option<Template>) {
+        self.template = template;
+    }
+
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
         // Handle incoming file data and deserialize as needed
         while let Ok((file_type, data)) = self.data_channel.1.try_recv() {
