@@ -2,6 +2,7 @@ use crate::image_helpers::{binary_image_from_image, rgb_to_egui_color_image};
 use crate::point::Point;
 use crate::scan::Scan;
 use crate::template::Template;
+use crate::template_scan::TemplateScan;
 use crate::webapp::utils::{
     download_button, template_from_settings, upload_button, FileType, QuestionSettings,
 };
@@ -187,10 +188,9 @@ impl StateView for CreateTemplate {
                                 .clicked()
                             {
                                 let scan = Scan {
-                                    img: binary_image_from_image(
+                                    image: binary_image_from_image(
                                         self.original_image.clone().unwrap(),
                                     ),
-                                    transformation: None,
                                 };
 
                                 if let Some(circle_centers_with_radius) = scan
@@ -209,11 +209,18 @@ impl StateView for CreateTemplate {
                         if ui.button("📄 Preview!").clicked() {
                             let template = self.to_template();
                             let scan = Scan {
-                                img: binary_image_from_image(self.original_image.clone().unwrap()),
+                                image: binary_image_from_image(
+                                    self.original_image.clone().unwrap(),
+                                ),
+                            };
+
+                            let template_scan = TemplateScan {
+                                template: &template,
+                                scan,
                                 transformation: None,
                             };
 
-                            let result = scan.circle_everything(&template);
+                            let result = template_scan.circle_everything();
                             let dynamic_image = image::DynamicImage::ImageRgb8(result);
                             self.template = Some(template);
                             self.update_texture(ui, &dynamic_image);

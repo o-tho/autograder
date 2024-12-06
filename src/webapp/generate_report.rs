@@ -3,6 +3,7 @@ use crate::image_helpers::rgb_to_egui_color_image;
 use crate::report::ImageReport;
 use crate::scan::Scan;
 use crate::template::{ExamKey, Template};
+use crate::template_scan::TemplateScan;
 use crate::webapp::utils::{download_button, upload_button, FileType};
 use crate::webapp::webapp::StateView;
 use egui::Context;
@@ -116,13 +117,12 @@ impl GenerateReport {
                 {
                     let img = container.to_iter().next().expect("could not open image");
 
-                    let mut scan = Scan {
-                        img: img.clone(),
-                        transformation: None,
+                    let scan = Scan {
+                        image: img,
                     };
-                    scan.transformation = scan.find_transformation(&self.template.clone().unwrap());
-                    let report = scan.generate_imagereport(
-                        &self.template.clone().unwrap(),
+
+                    let template_scan = TemplateScan::new(self.template.as_ref().unwrap(), scan);
+                    let report = template_scan.generate_image_report(
                         &self.key.clone().unwrap(),
                         &String::new(),
                     );
@@ -268,17 +268,13 @@ impl GenerateReport {
                 for chunk in &iterator.chunks(chunksize) {
                     let images: Vec<image::GrayImage> = chunk.collect();
                     let results: Vec<ImageReport> = images
-                        .iter()
+                        .into_iter()
                         .enumerate()
                         .map(|(idx, img)| {
                             log::info!("processing {}", turn * chunksize + idx);
-                            let mut scan = Scan {
-                                img: img.clone(),
-                                transformation: None,
-                            };
-                            scan.transformation = scan.find_transformation(&template);
-                            scan.generate_imagereport(
-                                &template,
+                            let scan = Scan { image: img };
+                            let template_scan = TemplateScan::new(&template, scan);
+                            template_scan.generate_image_report(
                                 &key,
                                 &format!("page{}", idx + turn * chunksize),
                             )

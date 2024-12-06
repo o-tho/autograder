@@ -1,6 +1,7 @@
 use crate::image_helpers::binary_image_from_image;
 use crate::scan::Scan;
 use crate::template::Template;
+use crate::template_scan::TemplateScan;
 use crate::typst_helpers::{typst_frame_to_template, TypstWrapper};
 use crate::webapp::utils::{download_button, QuestionSettings};
 use crate::webapp::webapp::StateView;
@@ -100,10 +101,16 @@ impl StateView for CreateForm {
 
                     let dynimage = image::load_from_memory(&png).unwrap();
                     let scan = Scan {
-                        img: binary_image_from_image(dynimage),
+                        image: binary_image_from_image(dynimage),
+                    };
+
+                    let template_scan = TemplateScan {
+                        template: &template,
+                        scan,
                         transformation: None,
                     };
-                    let circled = scan.circle_everything(&template);
+
+                    let circled = template_scan.circle_everything();
                     let dynamic_image = image::DynamicImage::ImageRgb8(circled);
 
                     let size = [dynamic_image.width() as _, dynamic_image.height() as _];

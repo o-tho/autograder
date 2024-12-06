@@ -79,10 +79,10 @@ pub fn fax_to_grayimage(data: &[u8], width: u32, height: u32) -> GrayImage {
     result
 }
 pub fn binary_image_from_image(img: DynamicImage) -> GrayImage {
-    let res = img.into_luma8();
-    let threshold = kapur_level(&res);
+    let gray = img.into_luma8();
+    let threshold = kapur_level(&gray);
 
-    imageproc::contrast::threshold(&res, threshold, imageproc::contrast::ThresholdType::Binary)
+    imageproc::contrast::threshold(&gray, threshold, imageproc::contrast::ThresholdType::Binary)
 }
 
 pub fn binary_image_from_file(path: &String) -> GrayImage {
@@ -96,14 +96,14 @@ pub fn binary_image_from_file(path: &String) -> GrayImage {
 }
 pub fn gray_to_rgb(gray_image: &GrayImage) -> RgbImage {
     let (width, height) = gray_image.dimensions();
-    let mut rgb_image = RgbImage::new(width, height);
+    let gray_data = gray_image.as_raw();
+    let mut rgb_data = Vec::with_capacity(gray_data.len() * 3);
 
-    for (x, y, gray_pixel) in gray_image.enumerate_pixels() {
-        let intensity = gray_pixel[0];
-        rgb_image.put_pixel(x, y, image::Rgb([intensity, intensity, intensity]));
+    for &intensity in gray_data {
+        rgb_data.extend_from_slice(&[intensity, intensity, intensity]);
     }
 
-    rgb_image
+    image::ImageBuffer::from_raw(width, height, rgb_data).unwrap()
 }
 
 pub fn draw_rectangle_around_box(

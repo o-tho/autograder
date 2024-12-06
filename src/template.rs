@@ -1,5 +1,5 @@
 use crate::point::Point;
-use crate::scan::Scan;
+use crate::template_scan::TemplateScan;
 use serde::{Deserialize, Serialize};
 
 const THRESHOLD: f64 = 0.30;
@@ -28,44 +28,36 @@ pub struct Box {
     pub value: u32,
 }
 impl Box {
-    pub fn checked(self, scan: &Scan) -> bool {
-        self.blackness(scan) > THRESHOLD
+    pub fn checked(self, template_scan: &TemplateScan) -> bool {
+        self.blackness(template_scan) > THRESHOLD
     }
-    pub fn blackness(&self, scan: &Scan) -> f64 {
-        let a: Point;
-        let b: Point;
+    pub fn blackness(&self, template_scan: &TemplateScan) -> f64 {
+        let a = template_scan.transform(self.a);
+        let b = template_scan.transform(self.b);
 
-        if let Some(trafo) = scan.transformation {
-            a = trafo.apply(self.a);
-            b = trafo.apply(self.b);
-        } else {
-            a = self.a;
-            b = self.b;
-        }
-
-        scan.blackness(a, b)
+        template_scan.scan.blackness(a, b)
     }
 }
 
 impl Question {
-    pub fn blacknesses(&self, scan: &Scan) -> Vec<f64> {
+    pub fn blacknesses(&self, template_scan: &TemplateScan) -> Vec<f64> {
         self.boxes
             .clone()
             .into_iter()
-            .map(|b| b.blackness(scan))
+            .map(|b| b.blackness(template_scan))
             .collect()
     }
 
-    pub fn blacknesses_rounded(&self, scan: &Scan) -> Vec<u32> {
-        self.blacknesses(scan)
+    pub fn blacknesses_rounded(&self, template_scan: &TemplateScan) -> Vec<u32> {
+        self.blacknesses(template_scan)
             .into_iter()
             .map(|b| (b * 100.0).round() as u32)
             .collect()
     }
-    pub fn choices(&self, scan: &Scan) -> Vec<u32> {
+    pub fn choices(&self, template_scan: &TemplateScan) -> Vec<u32> {
         let mut choices = Vec::new();
         let blackness: Vec<f64> = self
-            .blacknesses(scan)
+            .blacknesses(template_scan)
             .iter()
             .map(|&v| if v.is_nan() { 0.0 } else { v })
             .collect();
@@ -89,8 +81,8 @@ impl Question {
 
         choices
     }
-    pub fn choice(&self, scan: &Scan) -> Option<u32> {
-        let choices = self.choices(scan);
+    pub fn choice(&self, template_scan: &TemplateScan) -> Option<u32> {
+        let choices = self.choices(template_scan);
         if choices.len() == 1 {
             Some(choices[0])
         } else {

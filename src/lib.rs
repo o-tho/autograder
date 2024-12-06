@@ -4,24 +4,26 @@ pub mod point;
 pub mod report;
 pub mod scan;
 pub mod template;
+pub mod template_scan;
 pub mod typst_helpers;
+#[cfg(target_arch = "wasm32")]
 pub mod webapp;
 
-use crate::image_container::ImageContainer;
 use crate::image_container::SingleImageContainer;
 use crate::image_helpers::binary_image_from_image;
-
 use crate::scan::Scan;
-use template::{ExamKey, Template};
+use crate::template::Template;
+use crate::template_scan::TemplateScan;
 
-use itertools::Itertools;
-use rayon::prelude::*;
+#[cfg(not(target_arch = "wasm32"))]
 pub fn generate_reports_for_image_container(
-    container: &mut dyn ImageContainer,
+    container: &mut dyn crate::image_container::ImageContainer,
     template: &Template,
-    key: &ExamKey,
+    key: &crate::template::ExamKey,
     out_prefix: String,
 ) -> Result<String, Box<dyn std::error::Error>> {
+    use itertools::Itertools;
+    use rayon::prelude::*;
     let iterator = container.to_iter();
     let mut all_records = Vec::new();
     let chunksize = 100;
@@ -30,19 +32,13 @@ pub fn generate_reports_for_image_container(
 
         // Process each chunk in parallel and collect the results
         let chunk_records: Vec<_> = images
-            .par_iter()
+            .into_par_iter()
             .enumerate()
             .map(|(idx, img)| {
-                let mut scan = Scan {
-                    img: img.clone(),
-                    transformation: None,
-                };
-                scan.transformation = scan.find_transformation(template);
-                let report = scan.generate_imagereport(
-                    template,
-                    key,
-                    &format!("page{}", idx + turn * chunksize),
-                );
+                let scan = Scan { image: img };
+                let template_scan = TemplateScan::new(template, scan);
+                let report = template_scan
+                    .generate_image_report(key, &format!("page{}", idx + turn * chunksize));
                 report.save_to_file(&out_prefix);
                 let file_name = report.save_filename(&"".to_string());
                 (file_name, report.sid, report.score)
@@ -65,14 +61,13 @@ pub fn generate_reports_for_image_container(
 
 pub fn debug_report(container: &SingleImageContainer, template: &Template) {
     use crate::point::Point;
-    let mut scan = Scan {
-        img: binary_image_from_image(container.image.clone()),
-        transformation: None,
+    let scan = Scan {
+        image: binary_image_from_image(container.image.clone()),
     };
-    scan.transformation = scan.find_transformation(template);
-    let h_scale = (template.height as f64) / (scan.img.height() as f64);
-    let w_scale = (template.width as f64) / (scan.img.width() as f64);
+    let h_scale = (template.height as f64) / (scan.image.height() as f64);
+    let w_scale = (template.width as f64) / (scan.image.width() as f64);
 
+    let template_scan = TemplateScan::new(template, scan);
     let scale = (h_scale + w_scale) / 2.0;
 
     let projected_centers = template.circle_centers.map(|p| Point {
@@ -82,5 +77,5 @@ pub fn debug_report(container: &SingleImageContainer, template: &Template) {
 
     println!("expecting centers at {:#?}", projected_centers);
 
-    scan.debug_report(template);
+    template_scan.debug_report();
 }
