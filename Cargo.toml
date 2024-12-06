@@ -25,6 +25,7 @@ time = "0.3.36"
 ttf-parser = "0.25.0"
 typst-pdf = "0.12.0"
 typst-render = "0.12.0"
+ab_glyph = "0.2.29"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 rayon = "1.10.0"

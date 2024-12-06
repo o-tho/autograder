@@ -38,7 +38,7 @@ pub fn generate_reports_for_image_container(
                 let scan = Scan { image: img };
                 let template_scan = TemplateScan::new(template, scan);
                 let report = template_scan
-                    .generate_image_report(key, &format!("page{}", idx + turn * chunksize));
+                    .generate_image_report(key, &format!("page{}", idx + turn * chunksize + 1));
                 report.save_to_file(&out_prefix);
                 let file_name = report.save_filename(&"".to_string());
                 (file_name, report.sid, report.score)

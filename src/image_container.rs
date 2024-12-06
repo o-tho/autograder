@@ -1,4 +1,4 @@
-use crate::image_helpers::{binary_image_from_image, fax_to_grayimage};
+use crate::image_helpers::{binary_image_from_image, create_error_image, fax_to_grayimage};
 use image::{DynamicImage, GrayImage, ImageDecoder};
 
 use pdf::any::AnySync;
@@ -129,9 +129,7 @@ impl ImageContainer for PdfContainer {
     fn get_page(&mut self, n: usize) -> Result<GrayImage, std::boxed::Box<dyn std::error::Error>> {
         let file = &self.pdf_file;
         let resolver = file.resolver();
-
         let page = file.get_page(n as u32)?;
-
         let image = page.resources()?.xobjects.iter().find_map(|(_name, &r)| {
             resolver.get(r).ok().and_then(|o| match *o {
                 XObject::Image(ref im) => Some(im.clone()),
@@ -141,35 +139,40 @@ impl ImageContainer for PdfContainer {
 
         if let Some(img) = image {
             let (image_data, filter) = img.raw_image_data(&resolver).unwrap();
-            let grayimage: Result<GrayImage, std::boxed::Box<dyn std::error::Error>> = match filter
-            {
-                Some(pdf::enc::StreamFilter::DCTDecode(_)) => Ok(binary_image_from_image(
-                    image::load_from_memory_with_format(&image_data, image::ImageFormat::Jpeg)?,
-                )),
-
-                Some(pdf::enc::StreamFilter::FlateDecode(_)) => Ok(binary_image_from_image(
-                    image::load_from_memory_with_format(&image_data, image::ImageFormat::Png)?,
-                )),
-
+            let result = match filter {
+                Some(pdf::enc::StreamFilter::DCTDecode(_)) => {
+                    match image::load_from_memory_with_format(&image_data, image::ImageFormat::Jpeg)
+                    {
+                        Ok(img) => Ok(binary_image_from_image(img)),
+                        Err(e) => Ok(create_error_image(&format!(
+                            "Failed to decode JPEG on page {}: {}",
+                            n + 1,
+                            e
+                        ))),
+                    }
+                }
+                Some(pdf::enc::StreamFilter::FlateDecode(_)) => {
+                    match image::load_from_memory_with_format(&image_data, image::ImageFormat::Png)
+                    {
+                        Ok(img) => Ok(binary_image_from_image(img)),
+                        Err(e) => Ok(create_error_image(&format!(
+                            "Failed to decode PNG on page {}: {}",
+                            n + 1,
+                            e
+                        ))),
+                    }
+                }
                 Some(pdf::enc::StreamFilter::CCITTFaxDecode(_)) => {
                     Ok(fax_to_grayimage(&image_data, img.width, img.height))
                 }
-
-                _ => Err(std::boxed::Box::new(image::ImageError::Unsupported(
-                    image::error::UnsupportedError::from_format_and_kind(
-                        image::error::ImageFormatHint::Unknown,
-                        image::error::UnsupportedErrorKind::GenericFeature(
-                            "Unsupported feature".to_string(),
-                        ),
-                    ),
+                _ => Ok(create_error_image(&format!(
+                    "Could not decode image on page {}: Unsupported format",
+                    n + 1
                 ))),
             };
-            grayimage
+            result
         } else {
-            Err(std::boxed::Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Page has no image",
-            )))
+            Ok(create_error_image(&format!("No image on page {}", n + 1)))
         }
     }
 }

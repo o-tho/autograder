@@ -3,6 +3,7 @@ use fax::decoder;
 use fax::Color;
 use image::{DynamicImage, GrayImage, ImageReader, Luma, RgbImage};
 use imageproc::drawing;
+
 use std::path::Path;
 
 /// This is the computation of the Kapur level using equ. (18) in
@@ -157,4 +158,38 @@ pub fn rgb_to_egui_color_image(image: &RgbImage) -> egui::ColorImage {
         size: [width as usize, height as usize],
         pixels,
     }
+}
+
+pub fn create_error_image(error_text: &str) -> GrayImage {
+    // Create a new 400x300 grayscale image
+    let mut image = GrayImage::new(800, 300);
+
+    // Fill with light gray background
+    for pixel in image.pixels_mut() {
+        *pixel = image::Luma([240u8]);
+    }
+
+    // Load font from binary data embedded in the executable
+    let font_data = crate::typst_helpers::BIOLINUM_BOLD;
+    let font = ab_glyph::FontArc::try_from_slice(font_data).expect("Error loading font");
+
+    // Configure font scale (size)
+    let scale = ab_glyph::PxScale::from(30.0);
+
+    // Calculate text position
+    let x = 20; // Padding from left
+    let y = 150; // Vertically centered
+
+    // Draw the error text
+    imageproc::drawing::draw_text_mut(
+        &mut image,
+        image::Luma([50u8]), // Dark gray text
+        x,
+        y,
+        scale,
+        &font,
+        error_text,
+    );
+
+    image
 }

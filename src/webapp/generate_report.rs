@@ -276,7 +276,7 @@ impl GenerateReport {
                             let template_scan = TemplateScan::new(&template, scan);
                             template_scan.generate_image_report(
                                 &key,
-                                &format!("page{}", idx + turn * chunksize),
+                                &format!("page{}", idx + turn * chunksize + 1),
                             )
                         })
                         .collect();

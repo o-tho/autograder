@@ -121,7 +121,6 @@ fn main() -> Result<(), std::boxed::Box<dyn std::error::Error>> {
                     csv_report =
                         generate_reports_for_image_container(&mut container, &t, &k, outpath)
                             .expect("error generating report");
-                    println!("{}", csv_report);
                 }
                 Some("tif") | Some("tiff") => {
                     let buffer = std::io::BufReader::new(
@@ -208,8 +207,6 @@ fn main() -> Result<(), std::boxed::Box<dyn std::error::Error>> {
                 &std::fs::File::create(outprefix.to_owned() + ".json").unwrap(),
                 &template,
             );
-
-            // println!("{:#?}", document);
 
             let pdf = typst_pdf::pdf(&document, &typst_pdf::PdfOptions::default()).expect("bla");
             let _ = std::fs::write(format!("{}.pdf", outprefix), pdf);

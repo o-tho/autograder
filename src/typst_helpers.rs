@@ -13,8 +13,8 @@ use crate::point::Point;
 use crate::template::{Box, Question, Template};
 
 // hardcoding these for easy wasm support
-const BIOLINUM: &[u8] = include_bytes!("../assets/linux-biolinum.regular.ttf");
-const BIOLINUM_BOLD: &[u8] = include_bytes!("../assets/linux-biolinum.bold.ttf");
+pub const BIOLINUM: &[u8] = include_bytes!("../assets/linux-biolinum.regular.ttf");
+pub const BIOLINUM_BOLD: &[u8] = include_bytes!("../assets/linux-biolinum.bold.ttf");
 
 #[derive(Debug)]
 enum BubbleType {
