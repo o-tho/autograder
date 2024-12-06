@@ -210,10 +210,10 @@ impl GenerateReport {
                             self.preview_image = Rc::new(RefCell::new(None));
                             self.zipped_results = Rc::new(RefCell::new(None));
                             let mut cloned_self = self.clone();
+                            let ctx = ctx.clone();
                             spawn_local(async move {
-                                cloned_self.generate_reports().await;
+                                cloned_self.generate_reports(&ctx).await;
                             });
-                            ctx.request_repaint();
                         }
                     }
                 });
@@ -237,7 +237,7 @@ impl GenerateReport {
         });
     }
 
-    pub async fn generate_reports(&mut self) {
+    pub async fn generate_reports(&mut self, ctx: &Context) {
         let template = self.template.clone().unwrap();
         let key = self.key.clone().unwrap();
 
@@ -263,7 +263,7 @@ impl GenerateReport {
                 );
                 *self.status.borrow_mut() =
                     Some(format!("Working on the first {} scans", chunksize));
-                gloo_timers::future::TimeoutFuture::new(50).await;
+                gloo_timers::future::TimeoutFuture::new(1).await;
                 for chunk in &iterator.chunks(chunksize) {
                     let images: Vec<image::GrayImage> = chunk.collect();
                     let results: Vec<ImageReport> = images
@@ -295,7 +295,8 @@ impl GenerateReport {
                     turn += 1;
                     *self.status.borrow_mut() =
                         Some(format!("processed {} scans", turn * chunksize));
-                    gloo_timers::future::TimeoutFuture::new(100).await;
+                    ctx.request_repaint();
+                    gloo_timers::future::TimeoutFuture::new(1).await;
                 }
 
                 let csv_data = csv_writer.into_inner().unwrap().into_inner();
