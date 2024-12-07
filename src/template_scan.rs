@@ -238,7 +238,21 @@ impl<'a> TemplateScan<'a> {
 
     pub fn set_transformation(&mut self) {
         let trafo = self.find_transformation();
-        self.transformation = trafo;
+
+        if trafo.is_some() {
+            self.transformation = trafo;
+            return;
+        }
+
+        // if this did not work, then in all cases known to us the image had too
+        // much white noise, so we erode it
+        imageproc::morphology::erode_mut(
+            &mut self.scan.image,
+            imageproc::distance_transform::Norm::L1,
+            1,
+        );
+
+        self.transformation = self.find_transformation();
     }
 
     pub fn find_transformation(&self) -> Option<Transformation> {

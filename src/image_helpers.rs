@@ -80,6 +80,8 @@ pub fn fax_to_grayimage(data: &[u8], width: u32, height: u32) -> GrayImage {
         y += 1;
     });
 
+    // we don't trust binary images and erode them first
+    imageproc::morphology::erode_mut(&mut result, imageproc::distance_transform::Norm::L1, 1);
     result
 }
 pub fn binary_image_from_image(img: DynamicImage) -> GrayImage {
@@ -164,29 +166,23 @@ pub fn rgb_to_egui_color_image(image: &RgbImage) -> egui::ColorImage {
 }
 
 pub fn create_error_image(error_text: &str) -> GrayImage {
-    // Create a new 400x300 grayscale image
-    let mut image = GrayImage::new(800, 300);
+    let mut image = GrayImage::new(1200, 300);
 
-    // Fill with light gray background
     for pixel in image.pixels_mut() {
-        *pixel = image::Luma([240u8]);
+        *pixel = image::Luma([255u8]);
     }
 
-    // Load font from binary data embedded in the executable
     let font_data = crate::typst_helpers::BIOLINUM_BOLD;
     let font = ab_glyph::FontArc::try_from_slice(font_data).expect("Error loading font");
 
-    // Configure font scale (size)
     let scale = ab_glyph::PxScale::from(30.0);
 
-    // Calculate text position
-    let x = 20; // Padding from left
-    let y = 150; // Vertically centered
+    let x = 20;
+    let y = 150;
 
-    // Draw the error text
     imageproc::drawing::draw_text_mut(
         &mut image,
-        image::Luma([50u8]), // Dark gray text
+        image::Luma([0u8]),
         x,
         y,
         scale,

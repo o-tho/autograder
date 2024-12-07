@@ -2,7 +2,7 @@
 
 ## Automatically grade MCQ exams using optical mark recognition
 
-Autograder allows you to automatically grade MCQ exams. It is written in pure
+`autograder` allows you to automatically grade MCQ exams. It is written in pure
 rust and runs both in the command line and the modern web browsers using wasm.
 
 ## Installation
@@ -108,23 +108,27 @@ triggering an update in the view. You can always look into the developer
 console, which has a rather verbose output to what is happening in the background.
 
 Afterwards you can download a zip file containing a CSV file with all the
-results and conveniently named reports like this ![example report](assets/sample_report.png).
+results and conveniently named reports like this:
+
+![example report](assets/sample_report.png)
 
 These image reports were the main motivation to develop this software: using OMR
 will always be a bit error-prone, especially when students use the bubble sheet
 in ways that is not intended.
 
-A green circle means that autograder thinks that the selected bubble is the
+A green circle means that `autograder` thinks that the selected bubble is the
 circled one, which according to the key is correct. A red circle shows the
-correct answer, meaning that the selected bubble is elsewhere.
+correct answer, meaning that the selected bubble is elsewhere. An orange box
+indicates that `autograder` was not sure how to understand the choice and that
+manual grading is indicated.
 
 ### Using autograder from a mobile device
 
-If you only want to use autograder to grade a handful of bubble sheets, you can
+If you only want to use `autograder` to grade a handful of bubble sheets, you can
 do it like this:
 
 First, on a device with a large display, navigate to *Create Magic Link*. Here
-you can upload a key and a template and autograder generates a _very_ long link.
+you can upload a key and a template and `autograder` generates a _very_ long link.
 This link encodes all the template and key data and can be shared with anyone --
 most importantly yourself for usage on a mobile device. Bookmark that
 very long link with a descriptive name like "Stat101 Test 1" on your mobile device
