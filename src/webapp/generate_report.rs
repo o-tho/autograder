@@ -110,30 +110,32 @@ impl GenerateReport {
                 FileType::Container,
                 self.data_channel.0.clone(),
             );
-
-            if self.raw_container_data.is_some() && self.preview_texture.is_none() {
-                if let Some(mut container) =
-                    raw_data_to_container(&self.raw_container_data.clone().unwrap())
-                {
-                    let img = container.to_iter().next().expect("could not open image");
-
-                    let scan = Scan {
-                        image: img,
-                    };
-
-                    let template_scan = TemplateScan::new(self.template.as_ref().unwrap(), scan);
-                    let report = template_scan.generate_image_report(
-                        &self.key.clone().unwrap(),
-                        &String::new(),
-                    );
-                    *self.preview_image.borrow_mut() = Some(report.image.clone());
-                    *self.status.borrow_mut() = Some(format!(
-                        "{} points (version {}, student ID {})",
-                        report.score,
-                        report.version.unwrap_or(0) + 1,
-                        report.sid.unwrap_or(0)
-                    ));
+            if self.raw_container_data.is_some() {
+                if self.preview_texture.is_some() && ui.button("Do it again!").clicked() {
+                    self.preview_texture = None;
                 }
+                if self.preview_texture.is_none() {
+                    if let Some(mut container) =
+                        raw_data_to_container(&self.raw_container_data.clone().unwrap())
+                    {
+                        let img = container.to_iter().next().expect("could not open image");
+                        let scan = Scan {
+                            image: img,
+                        };
+                        let template_scan = TemplateScan::new(self.template.as_ref().unwrap(), scan);
+                        let report = template_scan.generate_image_report(
+                            &self.key.clone().unwrap(),
+                            &String::new(),
+                        );
+                        *self.preview_image.borrow_mut() = Some(report.image.clone());
+                        *self.status.borrow_mut() = Some(format!(
+                            "{} points (version {}, student ID {})",
+                            report.score,
+                            report.version.unwrap_or(0) + 1,
+                            report.sid.unwrap_or(0)
+                        ));
+                    }
+               }
             } else if self.status.borrow().is_none() {
                 *self.status.borrow_mut() = Some("Only use pictures that are roughly A4 with the whole visible area being covered by the bubble sheet.".into());
             }
