@@ -2,7 +2,7 @@ use crate::image_container::{ImageContainer, PdfContainer, SingleImageContainer,
 use crate::image_helpers::rgb_to_egui_color_image;
 use crate::report::ImageReport;
 use crate::scan::Scan;
-use crate::template::{ExamKey, Template};
+use crate::template::{are_compatible, ExamKey, Template};
 use crate::template_scan::TemplateScan;
 use crate::webapp::utils::{download_button, upload_button, FileType};
 use crate::webapp::webapp::StateView;
@@ -179,8 +179,18 @@ impl GenerateReport {
                             FileType::Key,
                             self.data_channel.0.clone(),
                         );
-                        if self.key.is_some() {
+                        if let Some(key) = &self.key {
                             ui.label("👍");
+                            if let Some(template) = &self.template {
+                                if !are_compatible(template, key) {
+                                    *self.status.borrow_mut() =
+                                        Some("Key and Template don't fit together 😢".to_string());
+                                } else if let Some(current_msg) = &*self.status.borrow() {
+                                    if current_msg == "Key and Template don't fit together 😢" {
+                                        *self.status.borrow_mut() = None;
+                                    }
+                                }
+                            }
                         }
                     });
                     ui.label("Open an exam key (.json).");
@@ -204,6 +214,10 @@ impl GenerateReport {
                     if self.template.is_some()
                         && self.key.is_some()
                         && self.raw_container_data.is_some()
+                        && are_compatible(
+                            self.template.as_ref().unwrap(),
+                            self.key.as_ref().unwrap(),
+                        )
                     {
                         if ui.button("🚀 Do the thing!").clicked() {
                             log::info!("Zhu Li! Do the thing!");

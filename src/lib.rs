@@ -24,6 +24,15 @@ pub fn generate_reports_for_image_container(
 ) -> Result<String, Box<dyn std::error::Error>> {
     use itertools::Itertools;
     use rayon::prelude::*;
+    use template::are_compatible;
+
+    if !are_compatible(template, key) {
+        return Err(Box::new(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "Template and key are incompatible",
+        )));
+    }
+
     let iterator = container.to_iter();
     let mut all_records = Vec::new();
     let chunksize = 100;
