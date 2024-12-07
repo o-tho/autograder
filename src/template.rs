@@ -17,7 +17,6 @@ pub struct Template {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Question {
-    pub id: String,
     pub boxes: Vec<Box>,
 }
 

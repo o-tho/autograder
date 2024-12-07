@@ -139,7 +139,7 @@ impl ImageContainer for PdfContainer {
 
         if let Some(img) = image {
             let (image_data, filter) = img.raw_image_data(&resolver).unwrap();
-            let result = match filter {
+            match filter {
                 Some(pdf::enc::StreamFilter::DCTDecode(_)) => {
                     match image::load_from_memory_with_format(&image_data, image::ImageFormat::Jpeg)
                     {
@@ -169,8 +169,7 @@ impl ImageContainer for PdfContainer {
                     "Could not decode image on page {}: Unsupported format",
                     n + 1
                 ))),
-            };
-            result
+            }
         } else {
             Ok(create_error_image(&format!("No image on page {}", n + 1)))
         }

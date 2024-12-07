@@ -91,12 +91,11 @@ pub fn template_from_settings(
     let first_idq = ps.first_id_q;
 
     Template {
-        id_questions: question_builder(first_idq, 10, w, h, pad_h, pad_v, idqs, &"id.".to_string()),
+        id_questions: question_builder(first_idq, 10, w, h, pad_h, pad_v, idqs),
         version: Question {
-            id: "version".to_string(),
             boxes: box_builder(first_vq, w, h, pad_h, vs),
         },
-        questions: question_builder(first_q, answers, w, h, pad_h, pad_v, qs, &"q.".to_string()),
+        questions: question_builder(first_q, answers, w, h, pad_h, pad_v, qs),
         circle_centers: cs.centers,
         circle_radius: cs.radius,
         height: ls.height,
@@ -134,17 +133,13 @@ pub fn question_builder(
     pad_h: u32,
     pad_v: u32,
     count: u32,
-    prefix: &String,
 ) -> Vec<Question> {
     let mut start = a;
     let mut result = Vec::new();
 
-    for i in 1..(count + 1) {
+    for _i in 1..(count + 1) {
         let boxes = box_builder(start, w, h, pad_h, answers);
-        let q = Question {
-            id: prefix.to_string() + &i.to_string(),
-            boxes: boxes,
-        };
+        let q = Question { boxes: boxes };
         result.push(q);
         start = Point {
             x: start.x,

@@ -160,10 +160,7 @@ pub fn typst_frame_to_template(frame: &typst::layout::Frame, scale: f64) -> Temp
     }
     let mut mcq_questions: HashMap<i32, Question> = HashMap::new();
     let mut id_questions: HashMap<i32, Question> = HashMap::new();
-    let mut version = Question {
-        id: "version".to_string(),
-        boxes: Vec::new(),
-    };
+    let mut version = Question { boxes: Vec::new() };
 
     for bubble in bubbles {
         let box_data = Box {
@@ -190,10 +187,7 @@ pub fn typst_frame_to_template(frame: &typst::layout::Frame, scale: f64) -> Temp
             BubbleType::Mcq { question, .. } => {
                 mcq_questions
                     .entry(question)
-                    .or_insert_with(|| Question {
-                        id: format!("q.{}", question),
-                        boxes: Vec::new(),
-                    })
+                    .or_insert_with(|| Question { boxes: Vec::new() })
                     .boxes
                     .push(box_data);
             }
@@ -203,10 +197,7 @@ pub fn typst_frame_to_template(frame: &typst::layout::Frame, scale: f64) -> Temp
             BubbleType::ID { row, .. } => {
                 id_questions
                     .entry(row)
-                    .or_insert_with(|| Question {
-                        id: format!("id.{}", row),
-                        boxes: Vec::new(),
-                    })
+                    .or_insert_with(|| Question { boxes: Vec::new() })
                     .boxes
                     .push(box_data);
             }
