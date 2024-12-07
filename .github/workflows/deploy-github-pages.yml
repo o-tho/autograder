@@ -28,8 +28,7 @@ jobs:
             ~/.cargo/bin
             ~/.cargo/git
             ~/.cargo/registry
-            ./target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('./Cargo.lock') }}
+            **/target
 
       - name: Install dependencies
         run: |
