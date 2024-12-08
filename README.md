@@ -42,12 +42,15 @@ a scan.
 
 You have two options for this. You can either use the *Create Form* view, which
 generates a PDF file to print (in A4) and the corresponding `template.json` file
-that you need to provide when you grade the exam.
+that you need to provide when you grade the exam. This is the recommended way
+and _very_ quick to do. If however the standard format does not work for you,
+you can also provide a custom form:
 
 #### Using a custom form
 
 If you want to use a custom form, this is entirely possible, but significantly
-more painful.
+more painful. _There is no need to do this step if you generate the form using
+`autograder`!_
 
 For this, go to the *Create Template* view. Upload an image file (like .png) of
 an empty form, preferably directly converted from a PDF file so nothing is
@@ -117,10 +120,11 @@ will always be a bit error-prone, especially when students use the bubble sheet
 in ways that is not intended.
 
 A green circle means that `autograder` thinks that the selected bubble is the
-circled one, which according to the key is correct. A red circle shows the
-correct answer, meaning that the selected bubble is elsewhere. An orange box
-indicates that `autograder` was not sure how to understand the choice and that
-manual grading is indicated.
+circled one, which according to the key is correct. This means the student gets
+a point for this question. A red circle shows the correct answer, meaning that
+the selected bubble is elsewhere. A student does not get a point for a red
+circle. An orange box indicates that `autograder` was not sure how to understand
+the choice and that manual grading is advised.
 
 ### Using autograder from a mobile device
 
@@ -131,7 +135,7 @@ First, on a device with a large display, navigate to *Create Magic Link*. Here
 you can upload a key and a template and `autograder` generates a _very_ long link.
 This link encodes all the template and key data and can be shared with anyone --
 most importantly yourself for usage on a mobile device. Bookmark that
-very long link with a descriptive name like "Stat101 Test 1" on your mobile device
+very long link with a descriptive name like "Stat101 Test 1" on your mobile device.
 
 If you open the magic link on a mobile device, you will see (if the width of
 your screen is less than its height) a simplified interface, where you can
