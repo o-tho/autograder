@@ -2,7 +2,7 @@ use crate::image_helpers::binary_image_from_image;
 use crate::scan::Scan;
 use crate::template::Template;
 use crate::template_scan::TemplateScan;
-use crate::typst_helpers::{typst_frame_to_template, typst_template, TypstWrapper};
+use crate::typst_helpers::generate_form_and_template;
 use crate::webapp::utils::{download_button, QuestionSettings};
 use crate::webapp::webapp::StateView;
 use eframe::egui::{Context, ScrollArea};
@@ -63,20 +63,15 @@ impl StateView for CreateForm {
                 ui.add_space(20.0);
 
                 if ui.button("Generate").clicked() {
-                    let code = typst_template(
+                    let scale = 3.0;
+                    let (document, template) = generate_form_and_template(
                         self.question_settings.num_qs,
                         self.question_settings.num_id_qs,
                         self.question_settings.num_versions,
                         self.question_settings.num_answers,
+                        scale,
                     );
-                    let wrapper = TypstWrapper::new(code);
 
-                    let document = typst::compile(&wrapper)
-                        .output
-                        .expect("Error from Typst. This really should not happen. So sorry.");
-
-                    let scale = 3.0;
-                    let template = typst_frame_to_template(&document.pages[0].frame, scale);
                     self.template = Some(template.clone());
                     let pdf =
                         typst_pdf::pdf(&document, &typst_pdf::PdfOptions::default()).expect("bla");

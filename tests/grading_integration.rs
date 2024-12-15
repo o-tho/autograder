@@ -1,6 +1,6 @@
 use autograder::image_helpers::binary_image_from_image;
 use autograder::template::{are_compatible, ExamKey, Question, Template};
-use autograder::typst_helpers::{typst_frame_to_template, typst_template, TypstWrapper};
+use autograder::typst_helpers::generate_form_and_template;
 use imageproc::drawing;
 use itertools::Itertools;
 
@@ -39,7 +39,7 @@ fn fill_out(
         .find(|&b| b.value == version)
         .unwrap();
 
-    check_box(&mut result, &thebox);
+    check_box(&mut result, thebox);
 
     // filling out the IDs
     let id_qs: Vec<Question> = template
@@ -55,7 +55,7 @@ fn fill_out(
 
     for (idx, d) in id.iter().enumerate() {
         let thebox = id_qs[idx].boxes.iter().find(|&b| b.value == *d).unwrap();
-        check_box(&mut result, &thebox);
+        check_box(&mut result, thebox);
     }
 
     // filling out the questions
@@ -72,7 +72,7 @@ fn fill_out(
 
     for (idx, c) in choices.iter().enumerate() {
         let thebox = qs[idx].boxes.iter().find(|&b| b.value == *c).unwrap();
-        check_box(&mut result, &thebox);
+        check_box(&mut result, thebox);
     }
 
     result
@@ -81,10 +81,7 @@ fn fill_out(
 #[test]
 fn generate_form_and_grade() {
     // we first create a form
-    let code = typst_template(5, 10, 4, 5);
-    let wrapper = TypstWrapper::new(code);
-    let document = typst::compile(&wrapper).output.expect("typst error");
-    let template = typst_frame_to_template(&document.pages[0].frame, 3.0);
+    let (document, template) = generate_form_and_template(5, 10, 4, 5, 3.0);
 
     let _ =
         typst_pdf::pdf(&document, &typst_pdf::PdfOptions::default()).expect("typst to pdf error");
@@ -129,7 +126,7 @@ fn generate_form_and_grade() {
         let report = template_scan.generate_image_report(&key, &"".to_string());
         assert_eq!(report.sid, Some(test.0));
         assert_eq!(report.version, Some(test.1));
-        assert_eq!(report.issue, false);
+        assert!(!report.issue);
         assert_eq!(report.score, test.3);
     }
 
