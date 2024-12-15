@@ -20,7 +20,7 @@ pub const BIOLINUM_BOLD: &[u8] = include_bytes!("../assets/linux-biolinum.bold.t
 enum BubbleType {
     Mcq { question: i32, option: String },
     Version { option: String },
-    ID { row: i32, digit: i32 },
+    ID { question: i32, digit: i32 },
 }
 
 #[derive(Debug)]
@@ -30,6 +30,20 @@ struct BubbleInfo {
     bottom_right_x: f64,
     bottom_right_y: f64,
     bubble_type: BubbleType,
+}
+
+pub fn typst_template(num_qs: u32, num_id_qs: u32, num_versions: u32, num_answers: u32) -> String {
+    let tmpl = include_str!("../assets/formtemplate.typ");
+    format!(
+        r#"
+#let num_qs = {}
+#let num_idqs = {}
+#let num_answers = {}
+#let num_versions = {}
+{}
+"#,
+        num_qs, num_id_qs, num_answers, num_versions, tmpl
+    )
 }
 
 fn extract_bubbles(frame: &Frame) -> Vec<BubbleInfo> {
@@ -119,7 +133,7 @@ fn parse_bubble_type(id: &str) -> Option<BubbleType> {
             option: parts[1].to_string(),
         }),
         "id" => Some(BubbleType::ID {
-            row: parts[1].parse().ok()?,
+            question: parts[1].parse().ok()?,
             digit: parts[2].parse().ok()?,
         }),
         _ => None,
@@ -194,9 +208,9 @@ pub fn typst_frame_to_template(frame: &typst::layout::Frame, scale: f64) -> Temp
             BubbleType::Version { .. } => {
                 version.boxes.push(box_data);
             }
-            BubbleType::ID { row, .. } => {
+            BubbleType::ID { question, .. } => {
                 id_questions
-                    .entry(row)
+                    .entry(question)
                     .or_insert_with(|| Question { boxes: Vec::new() })
                     .boxes
                     .push(box_data);
@@ -204,11 +218,12 @@ pub fn typst_frame_to_template(frame: &typst::layout::Frame, scale: f64) -> Temp
         }
     }
 
-    // Convert to vectors and sort by question number
-    let mut mcq_questions: Vec<Question> = mcq_questions.into_values().collect();
-    mcq_questions.sort_by_key(|q| q.boxes.first().unwrap().a.y);
-    let mut id_questions: Vec<Question> = id_questions.into_values().collect();
-    id_questions.sort_by_key(|q| q.boxes.first().unwrap().a.y);
+    let mut mcq_questions: Vec<(i32, Question)> = mcq_questions.into_iter().collect();
+    mcq_questions.sort_by_key(|(key, _)| *key);
+    let mcq_questions: Vec<Question> = mcq_questions.into_iter().map(|(_, q)| q).collect();
+    let mut id_questions: Vec<(i32, Question)> = id_questions.into_iter().collect();
+    id_questions.sort_by_key(|(key, _)| *key);
+    let id_questions: Vec<Question> = id_questions.into_iter().map(|(_, q)| q).collect();
 
     Template {
         id_questions,

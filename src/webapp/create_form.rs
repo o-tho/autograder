@@ -2,7 +2,7 @@ use crate::image_helpers::binary_image_from_image;
 use crate::scan::Scan;
 use crate::template::Template;
 use crate::template_scan::TemplateScan;
-use crate::typst_helpers::{typst_frame_to_template, TypstWrapper};
+use crate::typst_helpers::{typst_frame_to_template, typst_template, TypstWrapper};
 use crate::webapp::utils::{download_button, QuestionSettings};
 use crate::webapp::webapp::StateView;
 use eframe::egui::{Context, ScrollArea};
@@ -63,21 +63,11 @@ impl StateView for CreateForm {
                 ui.add_space(20.0);
 
                 if ui.button("Generate").clicked() {
-                    let tmpl = include_str!("../../assets/formtemplate.typ");
-
-                    let code = format!(
-                        r#"
-#let num_qs = {}
-#let num_idqs = {}
-#let num_answers = {}
-#let num_versions = {}
-{}
-"#,
+                    let code = typst_template(
                         self.question_settings.num_qs,
                         self.question_settings.num_id_qs,
-                        self.question_settings.num_answers,
                         self.question_settings.num_versions,
-                        tmpl
+                        self.question_settings.num_answers,
                     );
                     let wrapper = TypstWrapper::new(code);
 
