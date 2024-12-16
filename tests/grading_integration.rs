@@ -1,6 +1,6 @@
 use autograder::image_helpers::binary_image_from_image;
 use autograder::report::ImageReport;
-use autograder::template::{are_compatible, ExamKey, Question, Template};
+use autograder::template::{are_compatible, CorrectAnswer, ExamKey, Question, Template};
 use autograder::typst_helpers::generate_form_and_template;
 use imageproc::drawing;
 use itertools::Itertools;
@@ -96,27 +96,50 @@ fn generate_form_and_grade() {
     // rounding errors are fine, but nothing more extreme
     assert!(template.width.abs_diff(form_image.width()) <= 1);
     assert!(template.height.abs_diff(form_image.height()) <= 1);
-
-    let key: ExamKey = vec![vec![0; 5], vec![1; 5], vec![2; 5], vec![0, 1, 2, 3, 4]];
-    let incompatible_key_1: ExamKey = vec![vec![0; 5], vec![1; 4], vec![2; 5], vec![0, 1, 2, 3, 4]];
-    let incompatible_key_2: ExamKey = vec![
-        vec![0; 5],
-        vec![1; 5],
-        vec![2; 5],
-        vec![2; 5],
-        vec![0, 1, 2, 3, 4],
+    let incompatible_key_1: ExamKey = vec![
+        vec![CorrectAnswer::Exactly(0); 5],
+        vec![CorrectAnswer::Exactly(1); 4],
+        vec![CorrectAnswer::Exactly(2); 5],
+        vec![
+            CorrectAnswer::OneOf(vec![0, 1, 2, 3, 4]),
+            CorrectAnswer::Exactly(0),
+            CorrectAnswer::Exactly(0),
+            CorrectAnswer::Exactly(0),
+            CorrectAnswer::Exactly(0),
+        ],
     ];
-
-    assert!(are_compatible(&template, &key));
+    let incompatible_key_2: ExamKey = vec![
+        vec![CorrectAnswer::Exactly(0); 5],
+        vec![CorrectAnswer::Exactly(1); 5],
+        vec![CorrectAnswer::Exactly(2); 5],
+        vec![CorrectAnswer::Exactly(2); 5],
+        vec![CorrectAnswer::Exactly(2); 5],
+    ];
     assert!(!are_compatible(&template, &incompatible_key_1));
     assert!(!are_compatible(&template, &incompatible_key_2));
+
+    let key: ExamKey = vec![
+        vec![CorrectAnswer::Exactly(0); 5],
+        vec![CorrectAnswer::Exactly(1); 5],
+        vec![CorrectAnswer::Exactly(2); 5],
+        vec![
+            CorrectAnswer::OneOf(vec![1, 2]),
+            CorrectAnswer::Exactly(3),
+            CorrectAnswer::Exactly(3),
+            CorrectAnswer::Exactly(3),
+            CorrectAnswer::Exactly(3),
+        ],
+    ];
+    assert!(are_compatible(&template, &key));
 
     // well filled out forms
     let tests = [
         (1234567890, 0, vec![0, 1, 2, 3, 4], 1),
         (123456789, 1, vec![1, 1, 2, 2, 3], 2),
         (999999, 2, vec![4, 1, 3, 2, 0], 1),
-        (1234554, 3, vec![0, 1, 2, 3, 4], 5),
+        (1234554, 3, vec![0, 1, 1, 1, 1], 0),
+        (1234554, 3, vec![1, 4, 4, 4, 4], 1),
+        (1234554, 3, vec![2, 4, 4, 4, 4], 1),
     ];
     for test in tests {
         let filled_out = fill_out(&form_image, &template, test.0, test.1, test.2);

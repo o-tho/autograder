@@ -5,6 +5,13 @@ use serde::{Deserialize, Serialize};
 const THRESHOLD: f64 = 0.30;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum CorrectAnswer {
+    Exactly(u32),
+    OneOf(Vec<u32>),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Template {
     pub id_questions: Vec<Question>,
     pub version: Question,
@@ -90,7 +97,7 @@ impl Question {
     }
 }
 
-pub type ExamKey = Vec<Vec<u32>>;
+pub type ExamKey = Vec<Vec<CorrectAnswer>>;
 
 // check whether template and key are compatible: the number of versions needs
 // to match and every version needs to have answers for all questions.

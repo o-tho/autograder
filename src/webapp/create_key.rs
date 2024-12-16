@@ -1,4 +1,4 @@
-use crate::template::ExamKey;
+use crate::template::{CorrectAnswer, ExamKey};
 use crate::webapp::utils::download_button;
 use crate::webapp::webapp::StateView;
 use eframe::egui::{Context, Slider, TextEdit};
@@ -20,24 +20,49 @@ impl Default for CreateKey {
     }
 }
 
-fn convert_to_vector(input: &str) -> Vec<u32> {
-    input
-        .chars()
-        .filter_map(|c| {
-            let c = c.to_ascii_uppercase(); // Convert to uppercase to handle both cases
-            if ('A'..='Z').contains(&c) {
-                Some((c as u32 - 'A' as u32) as u32) // Map 'A' to 0, 'B' to 1, ..., 'Z' to 25
-            } else {
-                None // Ignore any non-alphabet characters
+fn convert_to_vector(input: &str) -> Vec<CorrectAnswer> {
+    let mut result = Vec::new();
+    let mut chars = input.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        let c = c.to_ascii_uppercase();
+        if c == '(' {
+            // Collect multiple options within parentheses
+            let mut options = Vec::new();
+            while let Some(&next) = chars.peek() {
+                let next = next.to_ascii_uppercase();
+                if next == ')' {
+                    chars.next(); // consume the closing parenthesis
+                    break;
+                }
+                if ('A'..='Z').contains(&next) {
+                    options.push((next as u32 - 'A' as u32) as u32);
+                }
+                chars.next();
             }
-        })
-        .collect()
+            result.push(CorrectAnswer::OneOf(options));
+        } else if ('A'..='Z').contains(&c) {
+            // Single letter is Exactly
+            result.push(CorrectAnswer::Exactly(c as u32 - 'A' as u32));
+        }
+    }
+
+    result
 }
 
-fn convert_to_string(input: &Vec<u32>) -> String {
+fn convert_to_string(input: &Vec<CorrectAnswer>) -> String {
     input
         .iter()
-        .map(|&num| char::from(b'A' + (num as u8)))
+        .map(|key| match key {
+            CorrectAnswer::Exactly(n) => char::from(b'A' + (*n as u8)).to_string(),
+            CorrectAnswer::OneOf(options) => {
+                let option_chars: String = options
+                    .iter()
+                    .map(|&n| char::from(b'A' + (n as u8)))
+                    .collect();
+                format!("({})", option_chars)
+            }
+        })
         .collect()
 }
 
@@ -63,18 +88,15 @@ impl StateView for CreateKey {
         eframe::egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Create Key");
 
-            // Slider for the number of versions
             ui.horizontal(|ui| {
                 ui.label("Number of Versions:");
                 ui.add(Slider::new(&mut self.number_of_versions, 1..=10).text("versions"));
             });
 
-            // Adjust the number of input fields based on the number of versions
             if self.inputs.len() != self.number_of_versions {
                 self.inputs.resize(self.number_of_versions, String::new());
             }
 
-            // Display the input text fields
             for i in 0..self.number_of_versions {
                 ui.horizontal(|ui| {
                     ui.label(format!("Version {}:", i + 1));
@@ -82,7 +104,8 @@ impl StateView for CreateKey {
                         TextEdit::singleline(&mut self.inputs[i])
                             .hint_text("Enter sequence like ABCDE"),
                     );
-                    ui.label(format!("({} answers)", self.inputs[i].len()));
+                    let answer_count = convert_to_vector(&self.inputs[i]).len();
+                    ui.label(format!("({} answers)", answer_count));
                 });
             }
             self.key = self
@@ -91,7 +114,8 @@ impl StateView for CreateKey {
                 .map(|input| convert_to_vector(input))
                 .collect();
 
-            // Convert the inputs into a Vec<Vec<u32>> when the user is ready
+            ui.label("If you enter a string like AB(CD)E, it means that in the third question both C and D would be graded as correct, whereas for the other questions only a single choice is counted as correct.");
+
             download_button(
                 ui,
                 "💾 Save Key as json",

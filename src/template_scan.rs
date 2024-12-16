@@ -4,8 +4,8 @@ use crate::point::Point;
 use crate::point::Transformation;
 use crate::report::ImageReport;
 use crate::scan::Scan;
-use crate::template::ExamKey;
 use crate::template::Template;
+use crate::template::{CorrectAnswer, ExamKey};
 
 use imageproc::drawing;
 
@@ -60,8 +60,17 @@ impl<'a> TemplateScan<'a> {
             for i in 0..t.questions.len() {
                 let q = &t.questions[i];
                 if let Some(answer) = q.choice(self) {
-                    if answer == k[v as usize][i] {
-                        score += 1;
+                    match &k[v as usize][i] {
+                        CorrectAnswer::Exactly(correct) => {
+                            if answer == *correct {
+                                score += 1;
+                            }
+                        }
+                        CorrectAnswer::OneOf(options) => {
+                            if options.contains(&answer) {
+                                score += 1;
+                            }
+                        }
                     }
                 }
             }
@@ -133,6 +142,20 @@ impl<'a> TemplateScan<'a> {
             );
         }
     }
+    fn mark_issue_with_orange_box(
+        &self,
+        image: &mut image::RgbImage,
+        question: &crate::template::Question,
+        trafo: impl Fn(Point) -> Point,
+    ) {
+        draw_rectangle_around_box(
+            image,
+            trafo(question.boxes[0].a),
+            trafo(question.boxes.last().unwrap().b),
+            ORANGE,
+        );
+    }
+
     pub fn generate_image_report(&self, k: &ExamKey, identifier: &String) -> ImageReport {
         let t = &self.template;
         let mut image = gray_to_rgb(&self.scan.image);
@@ -153,32 +176,51 @@ impl<'a> TemplateScan<'a> {
 
             for i in 0..t.questions.len() {
                 let q = &t.questions[i];
-                let correct = k[v as usize][i] as usize;
                 let choices = q.choices(self);
-                let correct_box_a = trafo(q.boxes[correct].a);
-                let correct_box_b = trafo(q.boxes[correct].b);
-                match choices.len() {
-                    0 => {
-                        draw_circle_around_box(&mut image, correct_box_a, correct_box_b, RED);
-                    }
-                    1 => {
-                        let color = if choices[0] as usize == correct {
-                            score += 1;
-                            GREEN
-                        } else {
-                            RED
+
+                if choices.len() > 1 {
+                    self.mark_issue_with_orange_box(&mut image, q, trafo);
+                    issue = true;
+                }
+
+                match &k[v as usize][i] {
+                    CorrectAnswer::Exactly(correct) => {
+                        let correct_box_a = trafo(q.boxes[*correct as usize].a);
+                        let correct_box_b = trafo(q.boxes[*correct as usize].b);
+
+                        let color = match choices.len() {
+                            0 => RED,
+                            1 => {
+                                if choices[0] == *correct {
+                                    score += 1;
+                                    GREEN
+                                } else {
+                                    RED
+                                }
+                            }
+                            _ => RED,
                         };
                         draw_circle_around_box(&mut image, correct_box_a, correct_box_b, color);
                     }
-                    _ => {
-                        draw_circle_around_box(&mut image, correct_box_a, correct_box_b, RED);
-                        draw_rectangle_around_box(
-                            &mut image,
-                            trafo(q.boxes.first().unwrap().a),
-                            trafo(q.boxes.last().unwrap().b),
-                            ORANGE,
-                        );
-                        issue = true;
+                    CorrectAnswer::OneOf(options) => {
+                        for option in options {
+                            let correct_box_a = trafo(q.boxes[*option as usize].a);
+                            let correct_box_b = trafo(q.boxes[*option as usize].b);
+
+                            let color = match choices.len() {
+                                0 => RED,
+                                1 => {
+                                    if choices[0] == *option {
+                                        score += 1;
+                                        GREEN
+                                    } else {
+                                        RED
+                                    }
+                                }
+                                _ => RED,
+                            };
+                            draw_circle_around_box(&mut image, correct_box_a, correct_box_b, color);
+                        }
                     }
                 }
             }
@@ -214,12 +256,7 @@ impl<'a> TemplateScan<'a> {
                     draw_circle_around_box(&mut image, tl, br, GREEN);
                 }
                 n if n > 1 => {
-                    draw_rectangle_around_box(
-                        &mut image,
-                        trafo(q.boxes[0].a),
-                        trafo(q.boxes.last().unwrap().b),
-                        ORANGE,
-                    );
+                    self.mark_issue_with_orange_box(&mut image, q, trafo);
                     issue = true;
                 }
                 _ => {}
