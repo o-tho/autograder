@@ -1,4 +1,5 @@
 use autograder::image_helpers::binary_image_from_image;
+use autograder::report::ImageReport;
 use autograder::template::{are_compatible, ExamKey, Question, Template};
 use autograder::typst_helpers::generate_form_and_template;
 use imageproc::drawing;
@@ -111,7 +112,7 @@ fn generate_form_and_grade() {
     assert!(!are_compatible(&template, &incompatible_key_2));
 
     // well filled out forms
-    let tests = vec![
+    let tests = [
         (1234567890, 0, vec![0, 1, 2, 3, 4], 1),
         (123456789, 1, vec![1, 1, 2, 2, 3], 2),
         (999999, 2, vec![4, 1, 3, 2, 0], 1),
@@ -131,31 +132,46 @@ fn generate_form_and_grade() {
     }
 
     // badly filled out forms
-    let tests = vec![
-        vec![
+    let tests = [
+        [
             (1234567890, 0, vec![0, 1, 2, 3, 4]),
             (1234567891, 0, vec![0, 1, 2, 3, 4]),
         ],
-        vec![
+        [
             (123456789, 1, vec![1, 1, 2, 2, 3]),
             (123456789, 3, vec![1, 1, 2, 2, 3]),
         ],
-        vec![
+        [
             (999999, 2, vec![4, 1, 3, 2, 0]),
             (999999, 2, vec![4, 1, 3, 3, 0]),
         ],
     ];
-    for test in tests {
-        let fst = test[0].clone();
-        let snd = test[1].clone();
 
-        let tmp = fill_out(&form_image, &template, fst.0, fst.1, fst.2);
-        let filled_out = fill_out(&tmp, &template, snd.0, snd.1, snd.2);
-        let scan = autograder::scan::Scan {
-            image: binary_image_from_image(filled_out),
-        };
-        let template_scan = autograder::template_scan::TemplateScan::new(&template, scan);
-        let report = template_scan.generate_image_report(&key, &"".to_string());
-        assert!(report.issue || report.sid.is_none() || report.version.is_none());
-    }
+    let reports: Vec<ImageReport> = tests
+        .iter()
+        .map(|test| {
+            let fst = test[0].clone();
+            let snd = test[1].clone();
+
+            let tmp = fill_out(&form_image, &template, fst.0, fst.1, fst.2);
+            let filled_out = fill_out(&tmp, &template, snd.0, snd.1, snd.2);
+            let scan = autograder::scan::Scan {
+                image: binary_image_from_image(filled_out),
+            };
+            let template_scan = autograder::template_scan::TemplateScan::new(&template, scan);
+            template_scan.generate_image_report(&key, &"".to_string())
+        })
+        .collect();
+
+    assert!(reports[0].issue);
+    assert_eq!(reports[0].version, Some(0));
+    assert_eq!(reports[0].score, 1);
+
+    assert!(reports[1].version.is_none());
+    assert_eq!(reports[1].score, 0);
+    assert_eq!(reports[1].sid, Some(123456789));
+
+    assert!(reports[2].issue);
+    assert_eq!(reports[2].version, Some(2));
+    assert_eq!(reports[2].sid, Some(999999));
 }

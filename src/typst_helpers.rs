@@ -57,7 +57,7 @@ pub fn generate_form_and_template(
     let wrapper = TypstWrapper::new(code);
     let document = typst::compile(&wrapper).output.unwrap();
     let frame = &document.pages[0].frame;
-    let template = typst_frame_to_template(&frame, scale);
+    let template = typst_frame_to_template(frame, scale);
 
     (document, template)
 }
