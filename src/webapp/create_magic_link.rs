@@ -36,6 +36,13 @@ impl CreateMagicLink {
             "".into()
         }
     }
+
+    fn is_valid_pair(&self) -> bool {
+        match (&self.key, &self.template) {
+            (Some(key), Some(template)) => crate::template::are_compatible(template, key),
+            _ => false,
+        }
+    }
 }
 
 impl StateView for CreateMagicLink {
@@ -82,12 +89,14 @@ impl StateView for CreateMagicLink {
                     ui.label("👍");
                 }
             });
-            if self.template.is_some() && self.key.is_some() {
+            if self.is_valid_pair() {
                 let link = self.to_link();
                 ui.hyperlink_to("This is your magic link ✨", link.clone());
                 ScrollArea::vertical().show(ui, |ui| {
                     ui.add(egui::TextEdit::multiline(&mut link.as_str()));
                 });
+            } else {
+                ui.label("Please add compatible key and template data.");
             }
         });
         while let Ok((file_type, data)) = self.data_channel.1.try_recv() {
