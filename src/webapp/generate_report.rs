@@ -32,7 +32,7 @@ pub struct GenerateReport {
     preview_image: Rc<RefCell<Option<image::RgbImage>>>,
     preview_texture: Option<egui::TextureHandle>,
     status: Rc<RefCell<Option<String>>>,
-    output_file_name: Option<String>,
+    output_file_basename: Option<String>,
 }
 
 impl Clone for GenerateReport {
@@ -46,7 +46,7 @@ impl Clone for GenerateReport {
             preview_image: self.preview_image.clone(),
             preview_texture: self.preview_texture.clone(),
             status: self.status.clone(),
-            output_file_name: self.output_file_name.clone(),
+            output_file_basename: self.output_file_name.clone(),
         }
     }
 }
@@ -62,7 +62,7 @@ impl Default for GenerateReport {
             preview_image: Rc::new(RefCell::new(None)),
             preview_texture: None,
             status: Rc::new(RefCell::new(None)),
-            output_file_name: None,
+            output_file_basename: None,
         }
     }
 }
@@ -245,7 +245,7 @@ impl GenerateReport {
                         download_button(
                             ui,
                             "💾 Save results as zip file",
-                            self.output_file_name.clone().unwrap(),
+                            self.output_file_basename.clone().unwrap() + ".zip",
                             zipped_data.clone(),
                         );
                         self.status = Rc::new(RefCell::new(None));
@@ -267,6 +267,12 @@ impl GenerateReport {
     pub async fn generate_reports(&mut self, ctx: &Context) {
         let template = self.template.clone().unwrap();
         let key = self.key.clone().unwrap();
+
+        let csv_file_name = if let Some(basename) = self.output_file_basename {
+            basename + ".csv"
+        } else {
+            "results.csv".to_string()
+        };
 
         if let Some(container_data) = self.raw_container_data.clone() {
             let _ = async move {
@@ -324,7 +330,7 @@ impl GenerateReport {
 
                 let csv_data = csv_writer.into_inner().unwrap().into_inner();
                 let _ = zip_writer.start_file::<String, ()>(
-                    "results.csv".to_string(),
+                    csv_file_name.to_string(),
                     FileOptions::default().compression_method(zip::CompressionMethod::Deflated),
                 );
                 let _ = zip_writer.write_all(&csv_data);
@@ -381,9 +387,8 @@ impl StateView for GenerateReport {
 
                     let split = file_name.rsplit_once(".");
                     if let Some(split) = split {
-                        self.output_file_name = Some(split.0.to_owned() + ".zip");
+                        self.output_file_basename = Some(split.0.to_owned());
                     }
-                    log::info!("{:#?}", self.output_file_name);
                     self.raw_container_data = Some(data);
                 }
                 _ => {}
