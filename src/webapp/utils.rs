@@ -40,7 +40,7 @@ pub fn upload_button(
     ctx: &egui::Context,
     label: &str,
     file_type: FileType,
-    sender: Sender<(FileType, Vec<u8>)>,
+    sender: Sender<(FileType, String, Vec<u8>)>,
 ) {
     if ui.button(label).clicked() {
         let sender = sender.clone();
@@ -49,7 +49,7 @@ pub fn upload_button(
         execute(async move {
             if let Some(file) = task.await {
                 let bytes = file.read().await;
-                if let Err(e) = sender.send((file_type, bytes)).await {
+                if let Err(e) = sender.send((file_type, file.file_name(), bytes)).await {
                     log::error!("Failed to send file data: {}", e);
                 } else {
                     log::info!("File data sent successfully");
@@ -60,9 +60,16 @@ pub fn upload_button(
     }
 }
 
-pub fn download_button(ui: &mut egui::Ui, label: &str, data: Vec<u8>) {
+pub fn download_button(
+    ui: &mut egui::Ui,
+    label: &str,
+    default_save_name: impl Into<String>,
+    data: Vec<u8>,
+) {
     if ui.button(label).clicked() {
-        let task = rfd::AsyncFileDialog::new().save_file();
+        let task = rfd::AsyncFileDialog::new()
+            .set_file_name(default_save_name)
+            .save_file();
         execute(async move {
             let file = task.await;
             if let Some(file) = file {

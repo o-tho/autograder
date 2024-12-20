@@ -25,10 +25,14 @@ pub struct GenerateReport {
     pub key: Option<ExamKey>,
     raw_container_data: Option<Vec<u8>>,
     zipped_results: Rc<RefCell<Option<Vec<u8>>>>,
-    data_channel: (Sender<(FileType, Vec<u8>)>, Receiver<(FileType, Vec<u8>)>),
+    data_channel: (
+        Sender<(FileType, String, Vec<u8>)>,
+        Receiver<(FileType, String, Vec<u8>)>,
+    ),
     preview_image: Rc<RefCell<Option<image::RgbImage>>>,
     preview_texture: Option<egui::TextureHandle>,
     status: Rc<RefCell<Option<String>>>,
+    output_file_name: Option<String>,
 }
 
 impl Clone for GenerateReport {
@@ -42,22 +46,23 @@ impl Clone for GenerateReport {
             preview_image: self.preview_image.clone(),
             preview_texture: self.preview_texture.clone(),
             status: self.status.clone(),
+            output_file_name: self.output_file_name.clone(),
         }
     }
 }
 
 impl Default for GenerateReport {
     fn default() -> Self {
-        let (sender, receiver) = channel(50);
         Self {
             template: None,
             key: None,
             raw_container_data: None,
-            data_channel: (sender, receiver),
+            data_channel: channel(50),
             zipped_results: Rc::new(RefCell::new(None)),
             preview_image: Rc::new(RefCell::new(None)),
             preview_texture: None,
             status: Rc::new(RefCell::new(None)),
+            output_file_name: None,
         }
     }
 }
@@ -237,7 +242,12 @@ impl GenerateReport {
 
                 columns[4].vertical(|ui| {
                     if let Some(zipped_data) = &*self.zipped_results.borrow() {
-                        download_button(ui, "💾 Save results as zip file", zipped_data.clone());
+                        download_button(
+                            ui,
+                            "💾 Save results as zip file",
+                            self.output_file_name.clone().unwrap(),
+                            zipped_data.clone(),
+                        );
                         self.status = Rc::new(RefCell::new(None));
                     }
                     if let Some(status) = &*self.status.borrow() {
@@ -346,10 +356,9 @@ impl StateView for GenerateReport {
     fn set_template(&mut self, template: Option<Template>) {
         self.template = template;
     }
-
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
         // Handle incoming file data and deserialize as needed
-        while let Ok((file_type, data)) = self.data_channel.1.try_recv() {
+        while let Ok((file_type, file_name, data)) = self.data_channel.1.try_recv() {
             match file_type {
                 FileType::Template => {
                     if let Ok(template) = serde_json::from_slice::<Template>(&data) {
@@ -369,6 +378,12 @@ impl StateView for GenerateReport {
                 }
                 FileType::Container => {
                     log::info!("uploaded data");
+
+                    let split = file_name.rsplit_once(".");
+                    if let Some(split) = split {
+                        self.output_file_name = Some(split.0.to_owned() + ".zip");
+                    }
+                    log::info!("{:#?}", self.output_file_name);
                     self.raw_container_data = Some(data);
                 }
                 _ => {}

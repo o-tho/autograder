@@ -119,6 +119,7 @@ impl StateView for CreateKey {
             download_button(
                 ui,
                 "💾 Save Key as json",
+                "key.json",
                 serde_json::to_vec(&self.key).unwrap(),
             );
         });

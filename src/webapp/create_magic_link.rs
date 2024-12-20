@@ -8,7 +8,10 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 pub struct CreateMagicLink {
     template: Option<Template>,
     key: Option<ExamKey>,
-    data_channel: (Sender<(FileType, Vec<u8>)>, Receiver<(FileType, Vec<u8>)>),
+    data_channel: (
+        Sender<(FileType, String, Vec<u8>)>,
+        Receiver<(FileType, String, Vec<u8>)>,
+    ),
 }
 
 impl Default for CreateMagicLink {
@@ -99,7 +102,7 @@ impl StateView for CreateMagicLink {
                 ui.label("Please add compatible key and template data.");
             }
         });
-        while let Ok((file_type, data)) = self.data_channel.1.try_recv() {
+        while let Ok((file_type, _file_name, data)) = self.data_channel.1.try_recv() {
             match file_type {
                 FileType::Template => {
                     if let Ok(template) = serde_json::from_slice::<Template>(&data) {

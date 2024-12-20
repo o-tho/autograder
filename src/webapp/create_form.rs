@@ -112,23 +112,25 @@ impl StateView for CreateForm {
                     download_button(
                         ui,
                         "💾 Save Template as json",
+                        "template.json",
                         serde_json::to_vec(&template).unwrap(),
                     );
-                    download_button(ui, "💾 Save form as PNG", png);
+                    download_button(ui, "💾 Save form as PNG", "form.png", png);
                 }
 
                 if let Some(template) = &self.template {
                     download_button(
                         ui,
                         "💾 Save template as JSON",
+                        "template.json",
                         serde_json::to_vec(&template).unwrap(),
                     );
                 }
                 if let Some(pdf) = &self.pdf {
-                    download_button(ui, "💾 Save form as PDF", pdf.to_vec());
+                    download_button(ui, "💾 Save form as PDF", "form.pdf", pdf.to_vec());
                 }
                 if let Some(png) = &self.png {
-                    download_button(ui, "💾 Save form as PNG", png.to_vec());
+                    download_button(ui, "💾 Save form as PNG", "form.png", png.to_vec());
                 }
             });
 
