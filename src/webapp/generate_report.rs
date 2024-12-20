@@ -46,7 +46,7 @@ impl Clone for GenerateReport {
             preview_image: self.preview_image.clone(),
             preview_texture: self.preview_texture.clone(),
             status: self.status.clone(),
-            output_file_basename: self.output_file_name.clone(),
+            output_file_basename: self.output_file_basename.clone(),
         }
     }
 }
@@ -268,10 +268,16 @@ impl GenerateReport {
         let template = self.template.clone().unwrap();
         let key = self.key.clone().unwrap();
 
-        let csv_file_name = if let Some(basename) = self.output_file_basename {
-            basename + ".csv"
+        let csv_file_name = if let Some(basename) = &self.output_file_basename {
+            basename.to_owned() + ".csv"
         } else {
             "results.csv".to_string()
+        };
+
+        let prefix = if let Some(basename) = &self.output_file_basename {
+            basename.to_owned()
+        } else {
+            "unnamed_container".to_string()
         };
 
         if let Some(container_data) = self.raw_container_data.clone() {
@@ -308,7 +314,7 @@ impl GenerateReport {
                             let template_scan = TemplateScan::new(&template, scan);
                             template_scan.generate_image_report(
                                 &key,
-                                &format!("page{}", idx + turn * chunksize + 1),
+                                &format!("{}-page{}", prefix, idx + turn * chunksize + 1),
                             )
                         })
                         .collect();
@@ -387,7 +393,7 @@ impl StateView for GenerateReport {
 
                     let split = file_name.rsplit_once(".");
                     if let Some(split) = split {
-                        self.output_file_basename = Some(split.0.to_owned());
+                        self.output_file_basename = Some(split.0.to_owned().replace(" ", ""));
                     }
                     self.raw_container_data = Some(data);
                 }
