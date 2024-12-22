@@ -72,7 +72,7 @@ fn is_dark(pixel: &Luma<u8>) -> bool {
     pixel[0] == 0
 }
 impl Scan {
-    pub fn blackness_around(&self, p: Point, r: u32) -> f64 {
+    fn blackness_around(&self, p: Point, r: u32) -> f64 {
         self.blackness(
             Point {
                 x: p.x.saturating_sub(r),
@@ -127,7 +127,7 @@ impl Scan {
         }
     }
 
-    pub fn find_white_spot_from_annulus(&self, start: Point, inner_radius: u32) -> Vec<Point> {
+    fn find_white_spot_from_annulus(&self, start: Point, inner_radius: u32) -> Vec<Point> {
         let mut points = Vec::new();
 
         let topleft = Point {
@@ -189,6 +189,7 @@ impl Scan {
 
         points
     }
+    #[cfg(target_arch = "wasm32")]
     pub fn real_centers_with_radius(
         &self,
         approx_centers: [Point; 3],

@@ -1,9 +1,10 @@
 use crate::point::Point;
 use fax::decoder;
 use fax::Color;
-use image::{DynamicImage, GrayImage, ImageReader, Luma, RgbImage};
+use image::{DynamicImage, GrayImage, ImageReader, Luma, Rgb, RgbImage};
 use imageproc::drawing;
 
+use std::collections::HashMap;
 use std::path::Path;
 /// Returns the [Kapur threshold level] of an 8bpp image. This threshold
 /// maximizes the entropy of the background and foreground.
@@ -119,25 +120,43 @@ pub fn gray_to_rgb(gray_image: &GrayImage) -> RgbImage {
     image::ImageBuffer::from_raw(width, height, rgb_data).unwrap()
 }
 
-pub fn draw_rectangle_around_box(
-    img: &mut RgbImage,
-    topleft: Point,
-    botright: Point,
-    color: image::Rgb<u8>,
+pub fn replace_colour(
+    image: &mut RgbImage,
+    x_min: u32,
+    y_min: u32,
+    x_max: u32,
+    y_max: u32,
+    from: Rgb<u8>,
+    to: Rgb<u8>,
 ) {
-    let strength = 4;
-    let x = topleft.x as i32;
-    let y = topleft.y as i32;
-    let size_x = botright.x - topleft.x;
-    let size_y = botright.y - topleft.y;
+    let mut replacements = HashMap::new();
+    replacements.insert(from, to);
+    replace_colours(image, x_min, y_min, x_max, y_max, replacements);
+}
 
-    for i in 0..strength {
-        drawing::draw_hollow_rect_mut(
-            img,
-            imageproc::rect::Rect::at(x - i, y - i)
-                .of_size(size_x + 2 * i as u32, size_y + 2 * i as u32),
-            color,
-        );
+pub fn replace_colours(
+    image: &mut RgbImage,
+    x_min: u32,
+    y_min: u32,
+    x_max: u32,
+    y_max: u32,
+    replacements: HashMap<Rgb<u8>, Rgb<u8>>,
+) {
+    let width = image.width();
+    let height = image.height();
+
+    let x_min = x_min.min(width - 1);
+    let y_min = y_min.min(height - 1);
+    let x_max = x_max.min(width - 1);
+    let y_max = y_max.min(height - 1);
+
+    for y in y_min..=y_max {
+        for x in x_min..=x_max {
+            let pixel = image.get_pixel_mut(x, y);
+            if let Some(&replacement) = replacements.get(pixel) {
+                *pixel = replacement;
+            }
+        }
     }
 }
 

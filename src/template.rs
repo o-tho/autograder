@@ -11,6 +11,22 @@ pub enum CorrectAnswer {
     OneOf(Vec<u32>),
 }
 
+impl CorrectAnswer {
+    pub fn correct(&self, answer: u32) -> bool {
+        match self {
+            Self::Exactly(this) => *this == answer,
+            Self::OneOf(these) => these.contains(&answer),
+        }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = u32> + use<'_> {
+        match self {
+            Self::Exactly(one) => std::slice::from_ref(one).iter().copied(),
+            Self::OneOf(many) => many.as_slice().iter().copied(),
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Template {
     pub id_questions: Vec<Question>,
@@ -37,7 +53,7 @@ impl Box {
     pub fn checked(self, template_scan: &TemplateScan) -> bool {
         self.blackness(template_scan) > THRESHOLD
     }
-    pub fn blackness(&self, template_scan: &TemplateScan) -> f64 {
+    fn blackness(&self, template_scan: &TemplateScan) -> f64 {
         let a = template_scan.transform(self.a);
         let b = template_scan.transform(self.b);
 
@@ -46,7 +62,7 @@ impl Box {
 }
 
 impl Question {
-    pub fn blacknesses(&self, template_scan: &TemplateScan) -> Vec<f64> {
+    fn blacknesses(&self, template_scan: &TemplateScan) -> Vec<f64> {
         self.boxes
             .clone()
             .into_iter()
