@@ -2120,8 +2120,7 @@ checksum = "cb56e1aa765b4b4f3aadfab769793b7087bb03a4ea4920644a6d238e2df5b9ed"
 [[package]]
 name = "image"
 version = "0.25.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd6f44aed642f18953a158afeb30206f4d50da59fbc66ecb53c66488de73563b"
+source = "git+https://github.com/o-tho/image.git#23afe754c13d58a3d387e2fffa6bf1ae141f2a04"
 dependencies = [
  "bytemuck",
  "byteorder-lite",
@@ -2130,8 +2129,8 @@ dependencies = [
  "num-traits",
  "png",
  "tiff",
- "zune-core",
- "zune-jpeg",
+ "zune-core 0.5.0-rc2",
+ "zune-jpeg 0.5.0-rc2",
 ]
 
 [[package]]
@@ -3485,7 +3484,7 @@ dependencies = [
  "svgtypes",
  "tiny-skia",
  "usvg",
- "zune-jpeg",
+ "zune-jpeg 0.4.13",
 ]
 
 [[package]]
@@ -5691,12 +5690,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f423a2c17029964870cfaabb1f13dfab7d092a62a29a89264f4d36990ca414a"
 
 [[package]]
+name = "zune-core"
+version = "0.5.0-rc2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0fa5491574238487afaf76a17d1907b47eaace69e97720b8486d584dfca013dc"
+
+[[package]]
 name = "zune-jpeg"
 version = "0.4.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "16099418600b4d8f028622f73ff6e3deaabdff330fb9a2a131dea781ee8b0768"
 dependencies = [
- "zune-core",
+ "zune-core 0.4.12",
+]
+
+[[package]]
+name = "zune-jpeg"
+version = "0.5.0-rc2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6e1b91c3b508b590945d61560be96449641b504a94f42f1a5594161b2d328ea"
+dependencies = [
+ "zune-core 0.5.0-rc2",
 ]
 
 [[package]]
