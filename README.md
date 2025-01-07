@@ -5,34 +5,32 @@
 `autograder` allows you to automatically grade MCQ exams. It is written in pure
 rust and runs both in the command line and the modern web browsers using wasm.
 
-## Installation
+## High level idea
+
+You have a lot of bubble sheets like this:
+
+![filledoutform](assets/filled_out_example.png)
+
+You want them automatically graded. `autograder` will transform those bubble
+sheet into image reports like this:
+
+![GRADE\_BY\_HAND-20120-v1-score5-page2.png](assets/sample_report.png)
+
+together with a CSV file with an entry like this:
+
+| **Filename**                                      | **ID** | **Score** |
+|---------------------------------------------------|--------|-----------|
+| ...                                               | ...    | ...       |
+| GRADE_BY_HAND-20120-v1-score5-DOC010725-page2.png | 20120  | 5         |
+| ...                                               | ...    | ...       |
+
+## Preparation
+### Installation
 
 `cargo run help` and `trunk serve` should work just fine. You can see a demo on
 [GitHub pages](https://o-tho.github.io/autograder/). Note that all computations
 are done within the browser and no sensitive files will be transmitted anywhere.
 
-
-## Background
-
-We have previously used
-[FormScanner](https://sites.google.com/site/examgrader/formscanner), but
-encountered issues in our use cases: Java tends to be a pain to set up, using
-Excel to grade the exams wasn't convenient for us and it was very difficult to
-check for mistakes in the individual grading.
-
-As this is work in progress, we chose to be compatible with bubble sheets as
-used by form scanner.
-
-## High level idea
-
-You have a bubble sheet like this:
-
-![filledoutform](assets/filled_out_example.png)
-
-You want it automatically graded. `autograder` has a command line interface,
-which is self-documented. The following is for the wasm web application.
-
-## Preparation
 
 ### The template
 
@@ -84,22 +82,19 @@ left corner and bottom right corner).
 Go to *Create Key*. Enter how many versions you have and enter the correct
 answers. You can then download the key as `key.json`
 
-At this point every question is graded as one point and only one choice can be
-correct.
+Every question is graded equally as one point. Most of the time a key will look
+like this: `ABCDEABCDE`, which means the correct answer to Q1 is A, to Q2 is B
+etc. However, potentially more than one answer is correct. If for example in
+question 2, a student can choose either B or E, then `A(BE)CDEABCDE` would allow
+for either answer in question 2.
 
 ## Grading Exams
 
-The most reliable way to scan exams is to use *Multipage Grayscale Tiffs*. PDFs
-are also supported, but we have encountered issues with Toshiba scanners which
-produced invalid JPGs inside the PDF, which we cannot handle. A resolution of
-150dpi is sufficient, maybe you can even get away with 100dpi.
-
-Scan to grayscale (and not to "black and white" or binary), because many
-scanners use bad algorithms for the conversion to pure black and white.
-`autograder` also uses pure black and white internally by converting grayscale
-to binary using Kapur's algorithm, which is significantly better than what we
-have seen any scanner use. So please, do yourself a favour and scan to
-grayscale.
+Please scan to grayscale (and not to "black and white" or binary), because many
+scanners use bad algorithms for the conversion to pure black and white. A
+resolution of 150dpi works very well. You can either use multipage tiff files or
+PDF. Occasionally scanners produce faulty image files. In that case `autograder`
+will complain and some image reports will just include error messages.
 
 In the *Generate Report* view you can upload a `template.json`, a `key.json` and
 an image container (like a multi-page tiff, a PDF, or a single image).
@@ -111,20 +106,70 @@ triggering an update in the view. You can always look into the developer
 console, which has a rather verbose output to what is happening in the background.
 
 Afterwards you can download a zip file containing a CSV file with all the
-results and conveniently named reports like this:
+results and conveniently named image reports. Let's discuss three example image
+reports and how we should understand them:
 
-![example report](assets/sample_report.png)
+![easysamplereport](assets/sample_report1.png)
 
-These image reports were the main motivation to develop this software: using OMR
-will always be a bit error-prone, especially when students use the bubble sheet
-in ways that is not intended.
+This report is the easiest to understand. First of all, the background colour
+indicates whether an answer is correct or incorrect with respect to the provided
+key, so for example the correct answer to Q6 is D and all other answers are
+incorrect. The foreground indicates whether `autograder` detected a student
+selection, so from the bright green and bright red we see that the student
+selected BCBCBCBEBD. All answers are correct except for Q6, where the student
+selected C but should have selected D. This corresponds to 9 points (out of 10).
 
-A green circle means that `autograder` thinks that the selected bubble is the
-circled one, which according to the key is correct. This means the student gets
-a point for this question. A red circle shows the correct answer, meaning that
-the selected bubble is elsewhere. A student does not get a point for a red
-circle. An orange box indicates that `autograder` was not sure how to understand
-the choice and that manual grading is advised.
+We have seen this report at the very start:
+
+![GRADE\_BY\_HAND-20120-v1-score5-page2.png](assets/sample_report.png)
+
+Here we also see an orange background. Here `autograder` was not completely sure
+how to grade the answers. `autograder` only awards points when it is sure that
+the student selected the correct answer and gives you the responsibility to deal
+with ambiguous cases. Questions 1, 4, 5, 9, 10 are the questions where the
+student clearly selected the correct answer. `autograder` hence gave this
+student a score of five out of ten. However, you might want to override this:
+
+In Q3 we see that the student selected two bubbles, C and D, but did not select
+any bubbles in Q2. Considering that C is correct in Q2 and D is correct in Q3,
+it is easy to imagine that the student accidentally moved into the wrong row
+while shading the bubbles. How you deal with this is up to you. The student did
+not get any point for Q2 or Q3 so far, but you might deem it necessary to change
+that.
+
+We also see that the `autograder` detected two selections in Q7, B and D. Of
+these two answers, B is incorrect and D is correct. However, the student wrote
+"D" next to the bubbles and it is clear that they meant to select this one.
+Manually adding a point is up to your discretion.
+
+For this bubble sheet, arguments can be made to give the student 5, 6, 7 or 8
+points. `autograder` only awards points when the student clearly chose the
+correct answer. Adding further points is up to your discretion.
+
+Now consider this image report:
+
+![GRADE\_BY\_HAND-9999-v2-score3-page3.png](assets/sample_report2.png)
+
+Here `autograder` is certain about the grading: if a bubble is significantly
+more black than all the other ones, it will interpret that as the students's
+choice in questions 7 and 10. However, `autograder` is unsure about the student
+ID and flagged the sheet for that reason.
+
+If you uploaded the three bubble sheets from one PDF file called
+`DOC010725.pdf`, then the zip file you download from the web
+interface will be called `DOC010725.zip` and contains
+`DOC010725.csv`, which stores the following data:
+
+| **Filename**                                        | **ID** | **Score** |
+|-----------------------------------------------------|--------|-----------|
+| 12345-v0-score9-DOC010725-page1.png                 | 12345  | 9         |
+| GRADE\_BY\_HAND-20120-v1-score5-DOC010725-page2.png | 20120  | 5         |
+| GRADE\_BY\_HAND-9999-v2-score3-DOC010725-page3.png  | 9999   | 3         |
+
+The zip file also contains those image files, which make it easy to see which
+files need manual attention. The suffix "pageN" indicated the page in the
+original file `DOC010725.pdf` if you want to look at the image
+before `autograder`'s processing.
 
 ### Using autograder from a mobile device
 
@@ -143,6 +188,18 @@ upload individual pictures from your mobile device for instant grading.
 
 Please make sure that the image only shows the (complete) bubble sheet by
 cropping.
+
+## History
+
+We have previously used
+[FormScanner](https://sites.google.com/site/examgrader/formscanner), but
+encountered issues in our use cases: Java tends to be a pain to set up, using
+Excel to grade the exams wasn't convenient for us and it was very difficult to
+check for mistakes in the individual grading.
+
+As this is work in progress, we chose to be compatible with bubble sheets as
+used by form scanner.
+
 
 ## Acknowledgements
 
