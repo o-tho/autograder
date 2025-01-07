@@ -1,4 +1,4 @@
-use crate::image_helpers::{draw_circle_around_box, draw_rectangle_around_box, gray_to_rgb};
+use crate::image_helpers::{draw_circle_around_box, gray_to_rgb, replace_colour, replace_colours};
 use crate::point::affine_transformation;
 use crate::point::Point;
 use crate::point::Transformation;
@@ -11,7 +11,26 @@ use imageproc::drawing;
 
 const RED: image::Rgb<u8> = image::Rgb([255u8, 0u8, 0u8]);
 const GREEN: image::Rgb<u8> = image::Rgb([0u8, 255u8, 0u8]);
-const ORANGE: image::Rgb<u8> = image::Rgb([255u8, 140u8, 0u8]);
+const BLACK: image::Rgb<u8> = image::Rgb([0u8, 0u8, 0u8]);
+const WHITE: image::Rgb<u8> = image::Rgb([255u8, 255u8, 255u8]);
+
+pub struct ColourScheme {
+    pub correct_foreground: image::Rgb<u8>,
+    pub correct_background: image::Rgb<u8>,
+    pub wrong_foreground: image::Rgb<u8>,
+    pub wrong_background: image::Rgb<u8>,
+    pub highlight_background: image::Rgb<u8>,
+    pub highlight_foreground: image::Rgb<u8>,
+}
+
+const STD_COLOUR_SCHEME: ColourScheme = ColourScheme {
+    correct_foreground: image::Rgb([30u8, 220u8, 30u8]),
+    correct_background: image::Rgb([220u8, 255u8, 220u8]),
+    wrong_foreground: image::Rgb([255u8, 50u8, 50u8]),
+    wrong_background: image::Rgb([255u8, 220u8, 220u8]),
+    highlight_background: image::Rgb([255u8, 215u8, 0u8]),
+    highlight_foreground: image::Rgb([255u8, 110u8, 0u8]),
+};
 
 pub struct TemplateScan<'a> {
     pub template: &'a Template,
@@ -52,25 +71,6 @@ impl<'a> TemplateScan<'a> {
             id.parse::<u32>().ok()
         }
     }
-    pub fn score_against(&self, k: &ExamKey) -> Option<u32> {
-        let mut score = 0;
-        let t = &self.template;
-
-        if let Some(v) = t.version.choice(self) {
-            for i in 0..t.questions.len() {
-                let q = &t.questions[i];
-                if let Some(answer) = q.choice(self) {
-                    if answer == k[v as usize][i] {
-                        score += 1;
-                    }
-                }
-            }
-            Some(score)
-        } else {
-            None
-        }
-    }
-
     pub fn circle_everything(&self) -> image::RgbImage {
         let t = &self.template;
         let mut image = gray_to_rgb(&self.scan.image);
@@ -133,53 +133,153 @@ impl<'a> TemplateScan<'a> {
             );
         }
     }
+    fn mark_issue_with_highlight_box(
+        &self,
+        image: &mut image::RgbImage,
+        question: &crate::template::Question,
+        trafo: impl Fn(Point) -> Point,
+        scheme: &ColourScheme,
+    ) {
+        let a = trafo(question.boxes[0].a);
+        let b = trafo(question.boxes.last().unwrap().b);
+
+        replace_colour(
+            image,
+            a.x,
+            a.y,
+            b.x,
+            b.y,
+            WHITE,
+            scheme.highlight_background,
+        );
+    }
+
     pub fn generate_image_report(&self, k: &ExamKey, identifier: &String) -> ImageReport {
         let t = &self.template;
         let mut image = gray_to_rgb(&self.scan.image);
         let mut score = 0;
         let mut issue = false;
+        let scheme = STD_COLOUR_SCHEME;
 
         let trafo = |p| self.transform(p);
 
         // draw the circle centers
         for c in t.circle_centers {
             let coord = trafo(c);
-            drawing::draw_cross_mut(&mut image, RED, coord.x as i32, coord.y as i32);
+            drawing::draw_cross_mut(
+                &mut image,
+                scheme.highlight_foreground,
+                coord.x as i32,
+                coord.y as i32,
+            );
         }
 
         if let Some(v) = t.version.choice(self) {
             let thebox = t.version.boxes[v as usize];
-            draw_circle_around_box(&mut image, trafo(thebox.a), trafo(thebox.b), GREEN);
+            replace_colour(
+                &mut image,
+                trafo(thebox.a).x,
+                trafo(thebox.a).y,
+                trafo(thebox.b).x,
+                trafo(thebox.b).y,
+                BLACK,
+                scheme.highlight_foreground,
+            );
+
+            let pad_v = if t.questions.len() > 1 {
+                let b = trafo(t.questions[0].boxes[0].b);
+                let a = trafo(t.questions[1].boxes[0].a);
+                (a.y - b.y) / 2
+            } else {
+                0
+            };
+
+            let pad_h = {
+                let b = trafo(t.questions[0].boxes[0].b);
+                let a = trafo(t.questions[0].boxes[1].a);
+                (a.x - b.x) / 2
+            };
 
             for i in 0..t.questions.len() {
                 let q = &t.questions[i];
-                let correct = k[v as usize][i] as usize;
                 let choices = q.choices(self);
-                let correct_box_a = trafo(q.boxes[correct].a);
-                let correct_box_b = trafo(q.boxes[correct].b);
-                match choices.len() {
-                    0 => {
-                        draw_circle_around_box(&mut image, correct_box_a, correct_box_b, RED);
-                    }
-                    1 => {
-                        let color = if choices[0] as usize == correct {
-                            score += 1;
-                            GREEN
-                        } else {
-                            RED
-                        };
-                        draw_circle_around_box(&mut image, correct_box_a, correct_box_b, color);
-                    }
-                    _ => {
-                        draw_circle_around_box(&mut image, correct_box_a, correct_box_b, RED);
-                        draw_rectangle_around_box(
+                let correct_answer = &k[v as usize][i];
+
+                if choices.len() == 1 && correct_answer.correct(choices[0]) {
+                    score += 1;
+                }
+
+                if choices.len() > 1 {
+                    for correct in correct_answer.iter() {
+                        let a = trafo(q.boxes[correct as usize].a);
+                        let b = trafo(q.boxes[correct as usize].b);
+                        replace_colour(
                             &mut image,
-                            trafo(q.boxes.first().unwrap().a),
-                            trafo(q.boxes.last().unwrap().b),
-                            ORANGE,
+                            a.x - pad_h,
+                            a.y - pad_v,
+                            b.x + pad_h,
+                            b.y + pad_v,
+                            WHITE,
+                            scheme.correct_background,
                         );
-                        issue = true;
                     }
+                    let a = trafo(q.boxes[0].a);
+                    let b = trafo(q.boxes.last().unwrap().b);
+                    replace_colour(
+                        &mut image,
+                        a.x - pad_h,
+                        a.y - pad_v,
+                        b.x + pad_h,
+                        b.y + pad_v,
+                        WHITE,
+                        scheme.highlight_background,
+                    );
+                    issue = true;
+
+                    for choice in choices {
+                        let thebox = q.boxes[choice as usize];
+                        let a = trafo(thebox.a);
+                        let b = trafo(thebox.b);
+                        replace_colour(
+                            &mut image,
+                            a.x - pad_h,
+                            a.y - pad_v,
+                            b.x + pad_h,
+                            b.y + pad_v,
+                            BLACK,
+                            scheme.highlight_foreground,
+                        );
+                    }
+                    continue;
+                }
+
+                for (idx, thebox) in q.boxes.iter().enumerate() {
+                    let mut replacements = std::collections::HashMap::new();
+
+                    if correct_answer.correct(idx as u32) {
+                        replacements.insert(WHITE, scheme.correct_background);
+
+                        if choices.contains(&(idx as u32)) {
+                            replacements.insert(BLACK, scheme.correct_foreground);
+                        }
+                    } else {
+                        replacements.insert(WHITE, scheme.wrong_background);
+
+                        if choices.contains(&(idx as u32)) {
+                            replacements.insert(BLACK, scheme.wrong_foreground);
+                        }
+                    }
+                    let a = trafo(thebox.a);
+                    let b = trafo(thebox.b);
+
+                    replace_colours(
+                        &mut image,
+                        a.x - pad_h,
+                        a.y - pad_v,
+                        b.x + pad_h,
+                        b.y + pad_v,
+                        replacements,
+                    );
                 }
             }
         }
@@ -195,11 +295,17 @@ impl<'a> TemplateScan<'a> {
                     if i - last_pos > 1 {
                         issue = true;
                         let prev_question = &t.id_questions[i - 1];
-                        draw_rectangle_around_box(
+                        let a = trafo(prev_question.boxes[0].a);
+                        let b = trafo(prev_question.boxes.last().unwrap().b);
+
+                        replace_colour(
                             &mut image,
-                            trafo(prev_question.boxes[0].a),
-                            trafo(prev_question.boxes.last().unwrap().b),
-                            ORANGE,
+                            a.x,
+                            a.y,
+                            b.x,
+                            b.y,
+                            WHITE,
+                            scheme.highlight_background,
                         );
                     }
                 }
@@ -211,15 +317,18 @@ impl<'a> TemplateScan<'a> {
                     let idx = choices[0];
                     let tl = trafo(q.boxes[idx as usize].a);
                     let br = trafo(q.boxes[idx as usize].b);
-                    draw_circle_around_box(&mut image, tl, br, GREEN);
+                    replace_colour(
+                        &mut image,
+                        tl.x,
+                        tl.y,
+                        br.x,
+                        br.y,
+                        BLACK,
+                        scheme.highlight_foreground,
+                    );
                 }
                 n if n > 1 => {
-                    draw_rectangle_around_box(
-                        &mut image,
-                        trafo(q.boxes[0].a),
-                        trafo(q.boxes.last().unwrap().b),
-                        ORANGE,
-                    );
+                    self.mark_issue_with_highlight_box(&mut image, q, trafo, &scheme);
                     issue = true;
                 }
                 _ => {}
@@ -236,7 +345,7 @@ impl<'a> TemplateScan<'a> {
         }
     }
 
-    pub fn set_transformation(&mut self) {
+    fn set_transformation(&mut self) {
         let trafo = self.find_transformation();
 
         if trafo.is_some() {
@@ -255,7 +364,7 @@ impl<'a> TemplateScan<'a> {
         self.transformation = self.find_transformation();
     }
 
-    pub fn find_transformation(&self) -> Option<Transformation> {
+    fn find_transformation(&self) -> Option<Transformation> {
         let t = &self.template;
         let h_scale = (t.height as f64) / (self.scan.image.height() as f64);
         let w_scale = (t.width as f64) / (self.scan.image.width() as f64);

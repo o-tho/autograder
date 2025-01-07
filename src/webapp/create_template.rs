@@ -19,7 +19,10 @@ pub struct CreateTemplate {
     preview_texture: Option<egui::TextureHandle>,
     original_image: Option<image::DynamicImage>,
     template: Option<Template>,
-    data_channel: (Sender<(FileType, Vec<u8>)>, Receiver<(FileType, Vec<u8>)>),
+    data_channel: (
+        Sender<(FileType, String, Vec<u8>)>,
+        Receiver<(FileType, String, Vec<u8>)>,
+    ),
 }
 
 impl Default for CreateTemplate {
@@ -228,6 +231,7 @@ impl StateView for CreateTemplate {
                         download_button(
                             ui,
                             "💾 Download Json",
+                            "template.json",
                             serde_json::to_vec(&self.to_template()).unwrap(),
                         );
                     }
@@ -246,7 +250,7 @@ impl StateView for CreateTemplate {
                 }
             });
 
-            while let Ok((file_type, data)) = self.data_channel.1.try_recv() {
+            while let Ok((file_type, _file_name, data)) = self.data_channel.1.try_recv() {
                 match file_type {
                     FileType::TemplateImage => {
                         if let Ok(image) = image::load_from_memory(&data) {

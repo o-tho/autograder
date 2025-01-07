@@ -2,7 +2,7 @@ use crate::image_helpers::binary_image_from_image;
 use crate::scan::Scan;
 use crate::template::Template;
 use crate::template_scan::TemplateScan;
-use crate::typst_helpers::{typst_frame_to_template, TypstWrapper};
+use crate::typst_helpers::generate_form_and_template;
 use crate::webapp::utils::{download_button, QuestionSettings};
 use crate::webapp::webapp::StateView;
 use eframe::egui::{Context, ScrollArea};
@@ -63,30 +63,15 @@ impl StateView for CreateForm {
                 ui.add_space(20.0);
 
                 if ui.button("Generate").clicked() {
-                    let tmpl = include_str!("../../assets/formtemplate.typ");
-
-                    let code = format!(
-                        r#"
-#let num_qs = {}
-#let num_idqs = {}
-#let num_answers = {}
-#let num_versions = {}
-{}
-"#,
+                    let scale = 3.0;
+                    let (document, template) = generate_form_and_template(
                         self.question_settings.num_qs,
                         self.question_settings.num_id_qs,
-                        self.question_settings.num_answers,
                         self.question_settings.num_versions,
-                        tmpl
+                        self.question_settings.num_answers,
+                        scale,
                     );
-                    let wrapper = TypstWrapper::new(code);
 
-                    let document = typst::compile(&wrapper)
-                        .output
-                        .expect("Error from Typst. This really should not happen. So sorry.");
-
-                    let scale = 3.0;
-                    let template = typst_frame_to_template(&document.pages[0].frame, scale);
                     self.template = Some(template.clone());
                     let pdf =
                         typst_pdf::pdf(&document, &typst_pdf::PdfOptions::default()).expect("bla");
@@ -127,23 +112,25 @@ impl StateView for CreateForm {
                     download_button(
                         ui,
                         "💾 Save Template as json",
+                        "template.json",
                         serde_json::to_vec(&template).unwrap(),
                     );
-                    download_button(ui, "💾 Save form as PNG", png);
+                    download_button(ui, "💾 Save form as PNG", "form.png", png);
                 }
 
                 if let Some(template) = &self.template {
                     download_button(
                         ui,
                         "💾 Save template as JSON",
+                        "template.json",
                         serde_json::to_vec(&template).unwrap(),
                     );
                 }
                 if let Some(pdf) = &self.pdf {
-                    download_button(ui, "💾 Save form as PDF", pdf.to_vec());
+                    download_button(ui, "💾 Save form as PDF", "form.pdf", pdf.to_vec());
                 }
                 if let Some(png) = &self.png {
-                    download_button(ui, "💾 Save form as PNG", png.to_vec());
+                    download_button(ui, "💾 Save form as PNG", "form.png", png.to_vec());
                 }
             });
 

@@ -1,5 +1,5 @@
 use image::RgbImage;
-use std::io::{Cursor, Write};
+use std::io::Write;
 use zip::write::FileOptions;
 use zip::ZipWriter;
 
@@ -69,35 +69,4 @@ impl ImageReport {
 
         Ok(())
     }
-}
-
-pub fn create_zip_from_imagereports(
-    reports: &[ImageReport],
-) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    // Create a buffer to hold the zip file in memory
-    let mut zip_buffer = Cursor::new(Vec::new());
-    let mut zip_writer = ZipWriter::new(&mut zip_buffer);
-
-    // Initialize CSV writer for metadata
-    let mut csv_writer = csv::Writer::from_writer(std::io::Cursor::new(Vec::new()));
-    csv_writer.write_record(["Filename", "ID", "Score"])?;
-
-    // Add each report to the zip file using `add_to_zip`
-    for report in reports.iter() {
-        report.add_to_zip(&mut zip_writer, &mut csv_writer)?;
-    }
-
-    // Add CSV data to the zip archive
-    let csv_data = csv_writer.into_inner()?.into_inner();
-    zip_writer.start_file::<String, ()>(
-        "results.csv".to_string(),
-        FileOptions::default().compression_method(zip::CompressionMethod::Deflated),
-    )?;
-    zip_writer.write_all(&csv_data)?;
-
-    // Finalize the zip archive
-    zip_writer.finish()?;
-
-    // Extract the resulting zip data from the buffer
-    Ok(zip_buffer.into_inner())
 }
