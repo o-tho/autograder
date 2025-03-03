@@ -1,5 +1,5 @@
 use crate::image_helpers::{binary_image_from_image, create_error_image, fax_to_grayimage};
-use image::{DynamicImage, GrayImage, ImageDecoder};
+use image::{DynamicImage, GrayImage, ImageBuffer, ImageDecoder, Luma, Rgb, Rgba};
 
 use pdf::any::AnySync;
 use pdf::file::NoLog;
@@ -112,11 +112,35 @@ impl<R: std::io::BufRead + std::io::Seek> ImageContainer for TiffContainer<R> {
                 Err(_) => return None, // Error getting dimensions; end iteration
             };
 
-            // Convert the buffer into a GrayImage and process it
-            let gray = image::DynamicImage::ImageLuma8(
-                GrayImage::from_raw(width, height, from_tiff).unwrap(),
-            );
+            let color_type = match decoder.colortype() {
+                Ok(t) => t,
+                Err(_) => {
+                    return Some(create_error_image(
+                        "Could not determine color type. Consider scanning to grayscale",
+                    ))
+                }
+            };
 
+            let decoded = match color_type {
+                tiff::ColorType::Gray(_) => {
+                    ImageBuffer::<Luma<u8>, _>::from_raw(width, height, from_tiff)
+                        .map(DynamicImage::ImageLuma8)
+                }
+                tiff::ColorType::RGB(_) => {
+                    ImageBuffer::<Rgb<u8>, _>::from_raw(width, height, from_tiff)
+                        .map(DynamicImage::ImageRgb8)
+                }
+                tiff::ColorType::RGBA(_) => {
+                    ImageBuffer::<Rgba<u8>, _>::from_raw(width, height, from_tiff)
+                        .map(DynamicImage::ImageRgba8)
+                }
+                _ => return Some(create_error_image(
+                    "Cannot handle this color type. Please convert to PDF or scan to grayscale.",
+                )),
+            };
+
+            // Convert the buffer into a GrayImage and process it
+            let gray = decoded?.into_luma8().into();
             // Return the processed image
             Some(binary_image_from_image(gray))
         });
