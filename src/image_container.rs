@@ -154,48 +154,60 @@ impl ImageContainer for PdfContainer {
         let file = &self.pdf_file;
         let resolver = file.resolver();
         let page = file.get_page(n as u32)?;
-        let image = page.resources()?.xobjects.iter().find_map(|(_name, &r)| {
-            resolver.get(r).ok().and_then(|o| match *o {
-                XObject::Image(ref im) => Some(im.clone()),
-                _ => None,
-            })
-        });
 
-        if let Some(img) = image {
-            let (image_data, filter) = img.raw_image_data(&resolver).unwrap();
-            match filter {
-                Some(pdf::enc::StreamFilter::DCTDecode(_)) => {
-                    match image::load_from_memory_with_format(&image_data, image::ImageFormat::Jpeg)
-                    {
-                        Ok(img) => Ok(binary_image_from_image(img)),
-                        Err(e) => Ok(create_error_image(&format!(
-                            "Failed to decode JPEG on page {}: {}",
-                            n + 1,
-                            e
-                        ))),
-                    }
+        let images: Vec<_> = page
+            .resources()?
+            .xobjects
+            .iter()
+            .filter_map(|(_name, &r)| {
+                resolver.get(r).ok().and_then(|o| match *o {
+                    XObject::Image(ref im) => Some(im.clone()),
+                    _ => None,
+                })
+            })
+            .collect();
+
+        if images.is_empty() {
+            return Ok(create_error_image(&format!("No image on page {}", n + 1)));
+        }
+
+        let largest_image = images
+            .into_iter()
+            .max_by_key(|img| img.width * img.height)
+            .unwrap();
+
+        let (image_data, filter) = largest_image.raw_image_data(&resolver).unwrap();
+
+        match filter {
+            Some(pdf::enc::StreamFilter::DCTDecode(_)) => {
+                match image::load_from_memory_with_format(&image_data, image::ImageFormat::Jpeg) {
+                    Ok(img) => Ok(binary_image_from_image(img)),
+                    Err(e) => Ok(create_error_image(&format!(
+                        "Failed to decode JPEG on page {}: {}",
+                        n + 1,
+                        e
+                    ))),
                 }
-                Some(pdf::enc::StreamFilter::FlateDecode(_)) => {
-                    match image::load_from_memory_with_format(&image_data, image::ImageFormat::Png)
-                    {
-                        Ok(img) => Ok(binary_image_from_image(img)),
-                        Err(e) => Ok(create_error_image(&format!(
-                            "Failed to decode PNG on page {}: {}",
-                            n + 1,
-                            e
-                        ))),
-                    }
-                }
-                Some(pdf::enc::StreamFilter::CCITTFaxDecode(_)) => {
-                    Ok(fax_to_grayimage(&image_data, img.width, img.height))
-                }
-                _ => Ok(create_error_image(&format!(
-                    "Could not decode image on page {}: Unsupported format",
-                    n + 1
-                ))),
             }
-        } else {
-            Ok(create_error_image(&format!("No image on page {}", n + 1)))
+            Some(pdf::enc::StreamFilter::FlateDecode(_)) => {
+                match image::load_from_memory_with_format(&image_data, image::ImageFormat::Png) {
+                    Ok(img) => Ok(binary_image_from_image(img)),
+                    Err(e) => Ok(create_error_image(&format!(
+                        "Failed to decode PNG on page {}: {}",
+                        n + 1,
+                        e
+                    ))),
+                }
+            }
+            Some(pdf::enc::StreamFilter::CCITTFaxDecode(_)) => Ok(fax_to_grayimage(
+                &image_data,
+                largest_image.width,
+                largest_image.height,
+            )),
+            _ => Ok(create_error_image(&format!(
+                "Could not decode image on page {}: Unsupported format",
+                n + 1
+            ))),
         }
     }
 }
