@@ -14,6 +14,7 @@ pub struct CreateForm {
     pub pdf: Option<Vec<u8>>,
     pub template: Option<Template>,
     pub png: Option<Vec<u8>>,
+    pub title: String,
 }
 
 impl Default for CreateForm {
@@ -24,6 +25,7 @@ impl Default for CreateForm {
             pdf: None,
             template: None,
             png: None,
+            title: String::new(),
         }
     }
 }
@@ -39,9 +41,13 @@ impl StateView for CreateForm {
             .show(ctx, |ui| {
                 ui.heading("Settings");
                 ui.add_space(10.0);
+                ui.horizontal(|ui| {
+                    ui.add(egui::Label::new("Title:"));
+                    ui.add(egui::TextEdit::singleline(&mut self.title));
+                });
 
                 ui.add(
-                    egui::Slider::new(&mut self.question_settings.num_qs, 1..=50)
+                    egui::Slider::new(&mut self.question_settings.num_qs, 1..=100)
                         .text("Number of Questions"),
                 );
 
@@ -56,7 +62,7 @@ impl StateView for CreateForm {
                 );
 
                 ui.add(
-                    egui::Slider::new(&mut self.question_settings.num_answers, 2..=8)
+                    egui::Slider::new(&mut self.question_settings.num_answers, 2..=7)
                         .text("Answers per Question"),
                 );
 
@@ -65,6 +71,7 @@ impl StateView for CreateForm {
                 if ui.button("Generate").clicked() {
                     let scale = 3.0;
                     let (document, template) = generate_form_and_template(
+                        self.title.clone(),
                         self.question_settings.num_qs,
                         self.question_settings.num_id_qs,
                         self.question_settings.num_versions,

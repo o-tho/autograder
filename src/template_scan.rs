@@ -90,7 +90,9 @@ impl<'a> TemplateScan<'a> {
         }
 
         let mut all_questions = t.questions.clone();
-        all_questions.push(t.version.clone());
+        if let Some(vq) = &t.version {
+            all_questions.push(vq.clone());
+        }
         all_questions.extend(t.id_questions.clone());
 
         for q in all_questions {
@@ -109,11 +111,11 @@ impl<'a> TemplateScan<'a> {
         let trafo = |p| self.transform(p);
         println!("Found centers at {:#?}", t.circle_centers.map(&trafo));
 
-        println!("Version at ({:#?}):", trafo(t.version.boxes[0].a));
-
-        let blacknesses: Vec<u32> = t.version.blacknesses_rounded(self);
-        println!("{:?} -> {:?}", blacknesses, t.version.choice(self));
-
+        if let Some(vq) = &t.version {
+            println!("Version at ({:#?}):", trafo(vq.boxes[0].a));
+            let blacknesses: Vec<u32> = vq.blacknesses_rounded(self);
+            println!("{:?} -> {:?}", blacknesses, vq.choice(self));
+        }
         println!("\nID Questions:");
 
         for (idx, q) in t.id_questions.clone().into_iter().enumerate() {
@@ -174,17 +176,25 @@ impl<'a> TemplateScan<'a> {
             );
         }
 
-        if let Some(v) = t.version.choice(self) {
-            let thebox = t.version.boxes[v as usize];
-            replace_colour(
-                &mut image,
-                trafo(thebox.a).x,
-                trafo(thebox.a).y,
-                trafo(thebox.b).x,
-                trafo(thebox.b).y,
-                BLACK,
-                scheme.highlight_foreground,
-            );
+        let v = if let Some(vq) = &t.version {
+            vq.choice(self)
+        } else {
+            Some(0)
+        };
+
+        if let Some(v) = v {
+            if let Some(vq) = &t.version {
+                let thebox = vq.boxes[v as usize];
+                replace_colour(
+                    &mut image,
+                    trafo(thebox.a).x,
+                    trafo(thebox.a).y,
+                    trafo(thebox.b).x,
+                    trafo(thebox.b).y,
+                    BLACK,
+                    scheme.highlight_foreground,
+                );
+            }
 
             let pad_v = if t.questions.len() > 1 {
                 let b = trafo(t.questions[0].boxes[0].b);
@@ -338,7 +348,7 @@ impl<'a> TemplateScan<'a> {
         ImageReport {
             image,
             sid: self.id(),
-            version: t.version.choice(self),
+            version: v,
             score,
             issue,
             identifier: identifier.to_string(),

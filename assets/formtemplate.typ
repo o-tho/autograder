@@ -1,7 +1,8 @@
-//#let num_qs = 20
+//#let num_qs = 100 
 //#let num_idqs = 9
-//#let num_answers = 5
+//#let num_answers = 7
 //#let num_versions = 4
+//#let title=[Final Exam Maths101]
 
 #set page("a4", margin: (x: 1.5cm, top: 0.5cm, bottom: 1cm))
 
@@ -42,8 +43,32 @@
   [#circle(radius: 15pt, fill: white)]
 )]
 
-// Generate table rows for MCQ section
-#let mcq_rows = for i in range(1, num_qs + 1) {
+
+#let mcq_rows_1 = for i in range(1, calc.min(26, num_qs + 1)) {
+  let row_items = ([#i.],)
+  for j in range(num_answers) {
+    row_items.push(mcq_bubble(i, index_to_letter(j)))
+  }
+  row_items
+}
+
+#let mcq_rows_2 = for i in range(26, calc.min(51, num_qs + 1)) {
+  let row_items = ([#i.],)
+  for j in range(num_answers) {
+    row_items.push(mcq_bubble(i, index_to_letter(j)))
+  }
+  row_items
+}
+
+#let mcq_rows_3 = for i in range(51, calc.min(76, num_qs + 1)) {
+  let row_items = ([#i.],)
+  for j in range(num_answers) {
+    row_items.push(mcq_bubble(i, index_to_letter(j)))
+  }
+  row_items
+}
+
+#let mcq_rows_4 = for i in range(76, calc.min(101, num_qs + 1)) {
   let row_items = ([#i.],)
   for j in range(num_answers) {
     row_items.push(mcq_bubble(i, index_to_letter(j)))
@@ -77,57 +102,102 @@
   // Flatten the rows into a single sequence
   all_rows.flatten()
 }
+#grid(
+  columns: (1fr),
+  row-gutter: 0.5cm,
+  grid(
+    columns: (1fr, 4fr, 1fr),
+    align: (left, center+horizon, right),
+    inset: 5pt,
+    [#annulus],
+    [*#title*],
+    [#annulus],
+  ),
+  grid(
+    columns: (1fr, 1fr),
+    [ #table(
+        columns: num_idqs + 1,
+        align: (x,y) => if x==0{(right)} else {(horizon)},
+        stroke: (x, y) => if x == 0 {
+            none  // No borders for ID column
+          } else if y == 0 {
+            if x == num_idqs {
+               (left: 1pt, top: 1pt, bottom: 1pt, right: 1pt)  // Last column of freetext
+            } else {
+               (left: 1pt, top: 1pt, bottom: 1pt)  // Other freetext columns
+            }
+          } else {
+            if x == num_idqs {
+               (left: 1pt, bottom: if y == 10 { 1pt } else { none }, right: 1pt)  // Last digit column
+            } else {
+               (left: 1pt, bottom: if y == 10 { 1pt } else { none })  // Other digit columns
+            }
+         },
+       ..id_rows
+      ) ],
+    [
+      #table(
+        columns: 2,
+        align: horizon,
+        inset: 10pt,
+        stroke: none,
+        [Name:], table.cell(align: bottom, line(length: 4cm)),
+        [Section:], table.cell(align: bottom, line(length: 4cm)) 
+      )
 
-#grid(columns: (1.5fr, 2fr),
-align: (left, left),
-inset: 5pt,
-[#annulus #v(1cm)], grid.cell(align: right, [#annulus]),
-grid.cell(
-rowspan: 5,
-[#table(
-  columns: num_answers + 1,
-  rows: (auto, auto, auto, auto, auto),
-  align: right,
-  stroke: none,
-  inset: 4pt,
-  ..mcq_rows
-)]), 
-[#table(
-  columns: 2,
-  align: horizon,
-  inset: 10pt,
-  stroke: none,
-  [Name:], table.cell(align: bottom, line(length: 4cm)),
-  [Section:], table.cell(align: bottom, line(length: 4cm)) 
-  )
-],
-[#table(
-  columns: num_versions + 1,
-  align: horizon,
-  stroke: none,
-  inset: 10pt,
-  ..version_items
-)], 
-[#table(
-  columns: num_idqs + 1,
-  align: (x,y) => if x==0{(right)} else {(horizon)},
-  stroke: (x, y) => if x == 0 {
-    none  // No borders for ID column
-  } else if y == 0 {
-    if x == num_idqs {
-      (left: 1pt, top: 1pt, bottom: 1pt, right: 1pt)  // Last column of freetext
-    } else {
-      (left: 1pt, top: 1pt, bottom: 1pt)  // Other freetext columns
-    }
-  } else {
-    if x == num_idqs {
-      (left: 1pt, bottom: if y == 10 { 1pt } else { none }, right: 1pt)  // Last digit column
-    } else {
-      (left: 1pt, bottom: if y == 10 { 1pt } else { none })  // Other digit columns
-    }
-  },
-  ..id_rows
-)], 
-[#v(1cm)If you make a mistake, do *NOT* mark it with X or use an eraser. Instead, use blanco or ask for a new bubble sheet.],
-grid.cell(align: right, [#v(1fr) #annulus])
+      #if num_versions > 1 {
+        table(
+          columns: num_versions + 1,
+          align: horizon,
+          stroke: none,
+          inset: 10pt,
+          ..version_items
+        )
+      }
+
+      
+      #v(1cm)
+      If you make a mistake, do *NOT* mark it with X or use an eraser. Instead, use blanco or ask for a new bubble sheet.
+      #v(1cm)
+      ],
+  ),
+  [Please shade your answers to the questions here:],
+  grid(
+    columns: (1fr, 1fr, 1fr, 1fr),
+    align: (left, center, center, right),
+    [#table(
+       columns: num_answers + 1,
+       rows: (auto, auto, auto, auto, auto),
+       align: right,
+       stroke: none,
+       inset: 4pt,
+       ..mcq_rows_1
+    )],
+    [#table(
+       columns: num_answers + 1,
+       rows: (auto, auto, auto, auto, auto),
+       align: right,
+       stroke: none,
+       inset: 4pt,
+       ..mcq_rows_2
+    )],
+    [#table(
+       columns: num_answers + 1,
+       rows: (auto, auto, auto, auto, auto),
+       align: right,
+       stroke: none,
+       inset: 4pt,
+       ..mcq_rows_3
+    )],
+    [#table(
+       columns: num_answers + 1,
+       rows: (auto, auto, auto, auto, auto),
+       align: right,
+       stroke: none,
+       inset: 4pt,
+       ..mcq_rows_4
+    )]
+  ),
+  align(right)[#v(1fr) #annulus],
 )
+

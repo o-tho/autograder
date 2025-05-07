@@ -30,7 +30,7 @@ impl CorrectAnswer {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Template {
     pub id_questions: Vec<Question>,
-    pub version: Question,
+    pub version: Option<Question>,
     pub questions: Vec<Question>,
     pub circle_centers: [Point; 3],
     pub circle_radius: u32,
@@ -118,7 +118,13 @@ pub type ExamKey = Vec<Vec<CorrectAnswer>>;
 // check whether template and key are compatible: the number of versions needs
 // to match and every version needs to have answers for all questions.
 pub fn are_compatible(t: &Template, k: &ExamKey) -> bool {
-    if k.len() != t.version.boxes.len() {
+    let num_versions = if let Some(vq) = &t.version {
+        vq.boxes.len()
+    } else {
+        1
+    };
+
+    if k.len() != num_versions {
         return false;
     }
 

@@ -32,15 +32,12 @@ fn fill_out(
         .map(|d| d.to_digit(10).unwrap())
         .collect();
 
-    // filling out the version
-    let thebox = template
-        .version
-        .boxes
-        .iter()
-        .find(|&b| b.value == version)
-        .unwrap();
+    if let Some(vq) = &template.version {
+        // filling out the version
+        let thebox = vq.boxes.iter().find(|&b| b.value == version).unwrap();
 
-    check_box(&mut result, thebox);
+        check_box(&mut result, thebox);
+    }
 
     // filling out the IDs
     let id_qs: Vec<Question> = template
@@ -82,7 +79,7 @@ fn fill_out(
 #[test]
 fn generate_form_and_grade() {
     // we first create a form
-    let (document, template) = generate_form_and_template(5, 10, 4, 5, 3.0);
+    let (document, template) = generate_form_and_template("Test Form", 5, 10, 4, 5, 3.0);
 
     let _ =
         typst_pdf::pdf(&document, &typst_pdf::PdfOptions::default()).expect("typst to pdf error");

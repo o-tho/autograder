@@ -97,11 +97,17 @@ pub fn template_from_settings(
     let first_vq = ps.first_vq;
     let first_idq = ps.first_id_q;
 
+    let version = if vs == 1 {
+        None
+    } else {
+        Some(Question {
+            boxes: box_builder(first_vq, w, h, pad_h, vs),
+        })
+    };
+
     Template {
         id_questions: question_builder(first_idq, 10, w, h, pad_h, pad_v, idqs),
-        version: Question {
-            boxes: box_builder(first_vq, w, h, pad_h, vs),
-        },
+        version: version,
         questions: question_builder(first_q, answers, w, h, pad_h, pad_v, qs),
         circle_centers: cs.centers,
         circle_radius: cs.radius,

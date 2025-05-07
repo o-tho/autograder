@@ -32,28 +32,36 @@ struct BubbleInfo {
     bubble_type: BubbleType,
 }
 
-pub fn typst_template(num_qs: u32, num_id_qs: u32, num_versions: u32, num_answers: u32) -> String {
+pub fn typst_template(
+    title: impl std::fmt::Display,
+    num_qs: u32,
+    num_id_qs: u32,
+    num_versions: u32,
+    num_answers: u32,
+) -> String {
     let tmpl = include_str!("../assets/formtemplate.typ");
     format!(
         r#"
+#let title = [{}]
 #let num_qs = {}
 #let num_idqs = {}
 #let num_answers = {}
 #let num_versions = {}
 {}
 "#,
-        num_qs, num_id_qs, num_answers, num_versions, tmpl
+        title, num_qs, num_id_qs, num_answers, num_versions, tmpl
     )
 }
 
 pub fn generate_form_and_template(
+    title: impl std::fmt::Display,
     num_qs: u32,
     num_id_qs: u32,
     num_versions: u32,
     num_answers: u32,
     scale: f64,
 ) -> (typst::model::Document, Template) {
-    let code = typst_template(num_qs, num_id_qs, num_versions, num_answers);
+    let code = typst_template(title, num_qs, num_id_qs, num_versions, num_answers);
     let wrapper = TypstWrapper::new(code);
     let document = typst::compile(&wrapper).output.unwrap();
     let frame = &document.pages[0].frame;
@@ -241,9 +249,15 @@ pub fn typst_frame_to_template(frame: &typst::layout::Frame, scale: f64) -> Temp
     id_questions.sort_by_key(|(key, _)| *key);
     let id_questions: Vec<Question> = id_questions.into_iter().map(|(_, q)| q).collect();
 
+    let actual_version = if version.boxes.len() == 0 {
+        None
+    } else {
+        Some(version)
+    };
+
     Template {
         id_questions,
-        version,
+        version: actual_version,
         questions: mcq_questions,
         circle_centers,
         circle_radius,

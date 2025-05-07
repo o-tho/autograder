@@ -4,7 +4,6 @@ use eframe::egui::Context;
 use crate::webapp::create_form::CreateForm;
 use crate::webapp::create_key::CreateKey;
 use crate::webapp::create_magic_link::CreateMagicLink;
-use crate::webapp::create_template::CreateTemplate;
 
 use crate::webapp::utils::decode_key_template;
 
@@ -29,7 +28,6 @@ pub trait StateView {
 
 pub enum View {
     GenerateReport(GenerateReport),
-    CreateTemplate(CreateTemplate),
     CreateForm(CreateForm),
     CreateKey(CreateKey),
     CreateMagicLink(CreateMagicLink),
@@ -40,7 +38,6 @@ impl View {
     fn as_state_view(&self) -> Option<&dyn StateView> {
         match self {
             View::GenerateReport(v) => Some(v),
-            View::CreateTemplate(v) => Some(v),
             View::CreateForm(v) => Some(v),
             View::CreateKey(v) => Some(v),
             View::CreateMagicLink(v) => Some(v),
@@ -53,7 +50,6 @@ impl View {
             View::GenerateReport(v) => Some(v),
             View::CreateForm(v) => Some(v),
             View::CreateKey(v) => Some(v),
-            View::CreateTemplate(v) => Some(v),
             View::CreateMagicLink(v) => Some(v),
             _ => None,
         }
@@ -62,7 +58,6 @@ impl View {
     fn update(&mut self, ctx: &Context, frame: &mut eframe::Frame) {
         match self {
             View::GenerateReport(v) => v.update(ctx, frame),
-            View::CreateTemplate(v) => v.update(ctx, frame),
             View::CreateForm(v) => v.update(ctx, frame),
             View::CreateKey(v) => v.update(ctx, frame),
             View::CreateMagicLink(v) => v.update(ctx, frame),
@@ -141,10 +136,6 @@ impl eframe::App for WebApp {
                 }
                 if ui.button("Create Form").clicked() {
                     new_view = Some(View::CreateForm(CreateForm::default()));
-                    let _ = location.set_hash("");
-                }
-                if ui.button("Create Template").clicked() {
-                    new_view = Some(View::CreateTemplate(CreateTemplate::default()));
                     let _ = location.set_hash("");
                 }
                 if ui.button("Create Key").clicked() {
