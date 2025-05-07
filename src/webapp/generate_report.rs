@@ -72,9 +72,14 @@ fn raw_data_to_container(data: &Vec<u8>) -> Option<Box<dyn ImageContainer + '_>>
     if let Some(kind) = infer::get(&clonedata) {
         match kind.mime_type() {
             "application/pdf" => {
-                let pdf = pdf::file::FileOptions::cached().load(clonedata).unwrap();
-                let container = PdfContainer { pdf_file: pdf };
-                return Some(Box::new(container));
+                let pdf = pdf::file::FileOptions::cached().load(clonedata);
+                if let Ok(pdf) = pdf {
+                    let container = PdfContainer { pdf_file: pdf };
+                    return Some(Box::new(container));
+                } else {
+                    log::error!("Invalid PDF file");
+                    return None;
+                }
             }
             "image/tiff" => {
                 let buffer = std::io::Cursor::new(clonedata);
