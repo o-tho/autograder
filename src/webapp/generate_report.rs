@@ -140,7 +140,7 @@ impl GenerateReport {
                         *self.preview_image.borrow_mut() = Some(report.image.clone());
                         *self.status.borrow_mut() = Some(format!(
                             "{} points (version {}, student ID {})",
-                            report.score,
+                            report.score(),
                             report.version.unwrap_or(0) + 1,
                             report.sid.unwrap_or(0)
                         ));
@@ -290,8 +290,8 @@ impl GenerateReport {
                 let mut zip_buffer = Cursor::new(Vec::new());
                 let mut zip_writer = ZipWriter::new(&mut zip_buffer);
                 let mut csv_writer = csv::Writer::from_writer(std::io::Cursor::new(Vec::new()));
-                let _ = csv_writer.write_record(["Filename", "ID", "Score"]);
-
+                let header = t.to_csv_header();
+                let _ = csv_writer.write_record(&header);
                 log::info!("Output files are set up, starting to iterate over the input images!");
 
                 let mut container = raw_data_to_container(&container_data).unwrap();

@@ -61,6 +61,21 @@ impl Box {
     }
 }
 
+impl Template {
+    pub fn to_csv_header(&self) -> Vec<String> {
+        let mut header: Vec<String> = vec![
+            "Filename".into(),
+            "ID".into(),
+            "Total Score".into(),
+            "Version".into(),
+        ];
+        for i in 1..=self.questions.len() {
+            header.push(format!("Q{:03}", i));
+        }
+        header
+    }
+}
+
 impl Question {
     fn blacknesses(&self, template_scan: &TemplateScan) -> Vec<f64> {
         self.boxes

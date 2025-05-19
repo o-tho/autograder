@@ -49,8 +49,7 @@ pub fn generate_reports_for_image_container(
                 let report = template_scan
                     .generate_image_report(key, &format!("page{}", idx + turn * chunksize + 1));
                 report.save_to_file(&out_prefix);
-                let file_name = report.save_filename(&"".to_string());
-                (file_name, report.sid, report.score)
+                report.to_serializable_vector()
             })
             .collect();
 
@@ -60,7 +59,8 @@ pub fn generate_reports_for_image_container(
 
     // Write all records to CSV
     let mut csv_writer = csv::Writer::from_writer(std::io::Cursor::new(Vec::new()));
-    csv_writer.write_record(["Filename", "ID", "Score"])?;
+    let header = template.to_csv_header();
+    csv_writer.write_record(&header)?;
     for record in all_records {
         csv_writer.serialize(record)?;
     }

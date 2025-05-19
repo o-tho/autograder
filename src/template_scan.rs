@@ -159,7 +159,7 @@ impl<'a> TemplateScan<'a> {
     pub fn generate_image_report(&self, k: &ExamKey, identifier: &String) -> ImageReport {
         let t = &self.template;
         let mut image = gray_to_rgb(&self.scan.image);
-        let mut score = 0;
+        let mut scores: Vec<Option<u32>> = vec![];
         let mut issue = false;
         let scheme = STD_COLOUR_SCHEME;
 
@@ -211,13 +211,19 @@ impl<'a> TemplateScan<'a> {
             };
 
             for i in 0..t.questions.len() {
+                let mut score = None;
                 let q = &t.questions[i];
                 let choices = q.choices(self);
                 let correct_answer = &k[v as usize][i];
 
-                if choices.len() == 1 && correct_answer.correct(choices[0]) {
-                    score += 1;
+                if choices.len() == 1 {
+                    if correct_answer.correct(choices[0]) {
+                        score = Some(1);
+                    } else {
+                        score = Some(0);
+                    }
                 }
+                scores.push(score);
 
                 if choices.len() > 1 {
                     for correct in correct_answer.iter() {
@@ -349,7 +355,7 @@ impl<'a> TemplateScan<'a> {
             image,
             sid: self.id(),
             version: v,
-            score,
+            scores,
             issue,
             identifier: identifier.to_string(),
         }

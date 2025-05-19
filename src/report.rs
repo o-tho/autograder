@@ -8,11 +8,14 @@ pub struct ImageReport {
     pub sid: Option<u32>,
     pub version: Option<u32>,
     pub issue: bool,
-    pub score: u32,
+    pub scores: Vec<Option<u32>>,
     pub identifier: String,
 }
 
 impl ImageReport {
+    pub fn score(&self) -> u32 {
+        self.scores.clone().into_iter().flatten().sum()
+    }
     pub fn save_filename(&self, prefix: &String) -> String {
         let mut filename: String = "".to_string();
 
@@ -31,7 +34,7 @@ impl ImageReport {
             filename += "NOVERSION-";
         }
 
-        filename += &format!("score{}-{}.png", self.score, self.identifier);
+        filename += &format!("score{}-{}.png", self.score(), self.identifier);
 
         prefix.to_string() + &filename
     }
@@ -43,6 +46,18 @@ impl ImageReport {
         let _ = self
             .image
             .write_to(&mut std::io::Cursor::new(buffer), image::ImageFormat::Png);
+    }
+
+    pub fn to_serializable_vector(&self) -> Vec<String> {
+        std::iter::once(self.save_filename(&"".to_string()))
+            .chain(
+                std::iter::once(self.sid)
+                    .chain(std::iter::once(Some(self.score())))
+                    .chain(std::iter::once(self.version))
+                    .chain(self.scores.iter().copied())
+                    .map(|opt| opt.map(|v| v.to_string()).unwrap_or_default()),
+            )
+            .collect()
     }
 
     pub fn add_to_zip<W: Write + std::io::Seek>(
@@ -57,9 +72,8 @@ impl ImageReport {
         // Define a filename for each image within the zip
         let file_name = self.save_filename(&"".to_string());
 
-        // Serialize the metadata into the CSV writer
-        csv_writer.serialize((&file_name, self.sid, self.score))?;
-
+        let record = self.to_serializable_vector();
+        csv_writer.serialize(record)?;
         // Add the encoded image to the zip archive
         zip_writer.start_file::<String, ()>(
             file_name,
