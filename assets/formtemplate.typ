@@ -4,7 +4,7 @@
 //#let num_versions = 4
 //#let title=[Final Exam Maths101]
 
-#set page("a4", margin: (x: 1.5cm, top: 0.5cm, bottom: 1cm))
+#set page("a4", margin: (x: 1.5cm, top: 0.5cm, bottom: 0.7cm))
 
 #let index_to_letter(i) = {
   let letters = ("A", "B", "C", "D", "E", "F", "G", "H", "I", "J")
