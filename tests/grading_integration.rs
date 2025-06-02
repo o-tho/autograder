@@ -148,7 +148,7 @@ fn generate_form_and_grade() {
         assert_eq!(report.sid, Some(test.0));
         assert_eq!(report.version, Some(test.1));
         assert!(!report.issue);
-        assert_eq!(report.score, test.3);
+        assert_eq!(report.score(), test.3);
     }
 
     // badly filled out forms
@@ -185,13 +185,21 @@ fn generate_form_and_grade() {
 
     assert!(reports[0].issue);
     assert_eq!(reports[0].version, Some(0));
-    assert_eq!(reports[0].score, 1);
+    assert_eq!(
+        reports[0].scores,
+        vec![Some(1), Some(0), Some(0), Some(0), Some(0)]
+    );
+    assert_eq!(reports[0].score(), 1);
 
     assert!(reports[1].version.is_none());
-    assert_eq!(reports[1].score, 0);
+    assert_eq!(reports[1].scores, vec![None; 5]);
     assert_eq!(reports[1].sid, Some(123456789));
 
     assert!(reports[2].issue);
     assert_eq!(reports[2].version, Some(2));
+    assert_eq!(
+        reports[2].scores,
+        vec![Some(0), Some(0), Some(0), None, Some(0)]
+    );
     assert_eq!(reports[2].sid, Some(999999));
 }
