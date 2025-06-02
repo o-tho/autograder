@@ -290,7 +290,7 @@ impl GenerateReport {
                 let mut zip_buffer = Cursor::new(Vec::new());
                 let mut zip_writer = ZipWriter::new(&mut zip_buffer);
                 let mut csv_writer = csv::Writer::from_writer(std::io::Cursor::new(Vec::new()));
-                let header = t.to_csv_header();
+                let header = template.to_csv_header();
                 let _ = csv_writer.write_record(&header);
                 log::info!("Output files are set up, starting to iterate over the input images!");
 
