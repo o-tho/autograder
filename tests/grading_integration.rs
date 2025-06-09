@@ -129,7 +129,7 @@ fn generate_form_and_grade() {
     ];
     assert!(are_compatible(&template, &key));
 
-    // well filled out forms
+    // well filled out forms (student ID, version, answers, true score)
     let tests = [
         (1234567890, 0, vec![0, 1, 2, 3, 4], 1),
         (123456789, 1, vec![1, 1, 2, 2, 3], 2),
@@ -151,7 +151,8 @@ fn generate_form_and_grade() {
         assert_eq!(report.score(), test.3);
     }
 
-    // badly filled out forms
+    // badly filled out forms: This overlays two filled out forms, giving
+    // unclear student IDs, version, answers.
     let tests = [
         [
             (1234567890, 0, vec![0, 1, 2, 3, 4]),
